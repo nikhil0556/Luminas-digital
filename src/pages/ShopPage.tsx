@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { Search, SlidersHorizontal, ArrowUpDown, X, Filter, Sparkles, RotateCw, Flame, ArrowRight, Zap } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { ProductCard } from '../components/ProductCard';
@@ -6,6 +7,28 @@ import { ProductGridSkeleton } from '../components/ProductGridSkeleton';
 import { PRODUCT_CATEGORIES } from '../data/initialProducts';
 import { LiveSearchDropdown } from '../components/LiveSearchDropdown';
 import { STORE_SECTIONS } from '../data/searchSections';
+import { searchProducts } from '../utils/searchEngine';
+import { BlowReveal } from '../components/BlowReveal';
+
+const staggerShopContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.06,
+      delayChildren: 0.04
+    }
+  }
+};
+
+const staggerShopItem = {
+  hidden: { opacity: 0, y: 16 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.35, ease: 'easeOut' }
+  }
+};
 
 export const ShopPage: React.FC = () => {
   const {
@@ -72,18 +95,17 @@ export const ShopPage: React.FC = () => {
   const isLoading = isLoadingProducts || isTransitioning;
 
   const filteredProducts = useMemo(() => {
+    if (searchQuery.trim()) {
+      const results = searchProducts(searchQuery, products, {
+        category: selectedCategory !== 'All Products' ? selectedCategory : undefined,
+        priceRange: priceFilter,
+        sortBy: sortBy === 'popular' ? 'relevance' : sortBy
+      });
+      return results.map(r => r.product);
+    }
+
     return products
       .filter(product => {
-        // Search
-        if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase();
-          const matchTitle = product.title.toLowerCase().includes(q);
-          const matchDesc = product.shortDescription.toLowerCase().includes(q);
-          const matchTags = product.tags.some(t => t.toLowerCase().includes(q));
-          const matchCat = product.category.toLowerCase().includes(q);
-          if (!matchTitle && !matchDesc && !matchTags && !matchCat) return false;
-        }
-
         // Category
         if (selectedCategory !== 'All Products') {
           if (selectedCategory === 'Prompt Packs') {
@@ -93,10 +115,19 @@ export const ShopPage: React.FC = () => {
           }
         }
 
-        // Price Filter
-        if (priceFilter === 'under20' && product.price >= 20) return false;
-        if (priceFilter === '20to30' && (product.price < 20 || product.price > 30)) return false;
-        if (priceFilter === 'above30' && product.price <= 30) return false;
+        // Price Filter (Base currency INR, mapped to $20-$40 range)
+        if (priceFilter === 'under20') {
+          const isUnder = product.price < 1800 || (product.price < 22 && product.price < 100);
+          if (!isUnder) return false;
+        }
+        if (priceFilter === '20to30') {
+          const inRange = (product.price >= 1800 && product.price <= 2500) || (product.price >= 20 && product.price <= 30);
+          if (!inRange) return false;
+        }
+        if (priceFilter === 'above30') {
+          const isAbove = product.price > 2500 || (product.price > 30 && product.price < 100);
+          if (!isAbove) return false;
+        }
 
         return true;
       })
@@ -105,8 +136,8 @@ export const ShopPage: React.FC = () => {
         if (sortBy === 'price-low') return a.price - b.price;
         if (sortBy === 'price-high') return b.price - a.price;
         if (sortBy === 'rating') return b.rating - a.rating;
-        // Default popular: reviewCount + rating
-        return b.reviewCount * b.rating - a.reviewCount * a.rating;
+        // Default popular: reviewsCount + rating
+        return b.reviewsCount * b.rating - a.reviewsCount * a.rating;
       });
   }, [products, searchQuery, selectedCategory, priceFilter, sortBy]);
 
@@ -121,17 +152,19 @@ export const ShopPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Header Banner */}
-      <div className="space-y-2 border-b border-neutral-800 pb-6">
-        <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
-          Complete Marketplace
-        </span>
-        <h1 className="text-3xl sm:text-4xl font-bold font-display text-white">
-          All Digital Products & Resources
-        </h1>
-        <p className="text-sm text-neutral-400 max-w-2xl">
-          Browse our curated digital materials including e-books, AI prompts, productivity Notion OS workspaces, and agency business templates.
-        </p>
-      </div>
+      <BlowReveal direction="breeze" gustSweep>
+        <div className="space-y-2 border-b border-neutral-800 pb-6">
+          <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
+            Complete Marketplace
+          </span>
+          <h1 className="text-3xl sm:text-4xl font-bold font-display text-white">
+            All Digital Products & Resources
+          </h1>
+          <p className="text-sm text-neutral-400 max-w-2xl">
+            Browse our curated digital materials including e-books, AI prompts, productivity Notion OS workspaces, and agency business templates.
+          </p>
+        </div>
+      </BlowReveal>
 
       {/* Filter and Search Bar */}
       <div className="space-y-4">
@@ -150,12 +183,12 @@ export const ShopPage: React.FC = () => {
               aria-label="Filter by price range"
               value={priceFilter}
               onChange={(e) => handlePriceFilterChange(e.target.value as any)}
-              className="px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="px-3 py-2.5 rounded-xl neu-raised text-xs text-neutral-200 focus:outline-none cursor-pointer font-mono"
             >
               <option value="all">All Prices</option>
-              <option value="under20">Under $20</option>
-              <option value="20to30">$20 to $30</option>
-              <option value="above30">$30 & Above</option>
+              <option value="under20">Under $22 (Under ₹1,800)</option>
+              <option value="20to30">$22 - $30 (₹1,800 - ₹2,500)</option>
+              <option value="above30">$30+ (₹2,500+)</option>
             </select>
 
             {/* Sort Selector */}
@@ -163,7 +196,7 @@ export const ShopPage: React.FC = () => {
               aria-label="Sort products"
               value={sortBy}
               onChange={(e) => handleSortChange(e.target.value as any)}
-              className="px-3 py-2.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs text-neutral-300 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              className="px-3 py-2.5 rounded-xl neu-raised text-xs text-neutral-200 focus:outline-none cursor-pointer font-mono"
             >
               <option value="popular">Most Popular</option>
               <option value="newest">New Releases</option>
@@ -283,11 +316,18 @@ export const ShopPage: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <motion.div
+          variants={staggerShopContainer}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+        >
           {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
+            <motion.div key={product.id} variants={staggerShopItem}>
+              <ProductCard product={product} />
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
   );

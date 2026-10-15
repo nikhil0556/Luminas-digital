@@ -13,6 +13,38 @@ export interface StoreSection {
 
 export const STORE_SECTIONS: StoreSection[] = [
   {
+    id: 'ultimate-ai-creator-section',
+    title: 'The Ultimate AI Creator & Business Section',
+    subtitle: 'Dual PDF Books: 22-page opening playbook by Nikhil Rajbhar + 248-page 3,500 prompt master library',
+    page: 'home',
+    sectionAnchor: '#ultimate-ai-creator-section',
+    badge: 'Flagship 2-Book Suite',
+    iconName: 'Zap',
+    keywords: [
+      'the ultimate ai creator & business tool',
+      'the ultimate ai creator & business section',
+      'the ultimate ai creator',
+      'ai creator',
+      'nikhil rajbhar',
+      'nikhil raj',
+      'nikhil0556__',
+      'opening source',
+      'pdf book',
+      '3500 prompts',
+      '3500 ai prompts',
+      'mega-pack',
+      'megapack',
+      '7-part formula',
+      'copywriting',
+      'monetization',
+      'video creation',
+      'seo vault',
+      'coding vault',
+      'freelancer workflow'
+    ],
+    description: 'Explore the 22-page opening visual playbook by Nikhil Rajbhar and the complete 248-page 3,500 prompt library. Read sample and download both ebooks once paid.'
+  },
+  {
     id: 'trending-slash-prompts',
     title: '100 Trending ChatGPT "/" Prompts Section',
     subtitle: 'Quick-reference slash-style prompt commands cheatsheet & live vault',

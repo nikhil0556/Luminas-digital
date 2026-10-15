@@ -39,13 +39,13 @@ export const PromptPreviewModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
       <div
-        className="relative w-full max-w-3xl max-h-[90vh] bg-neutral-900 border border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden text-neutral-200"
+        className="relative w-full max-w-3xl max-h-[90vh] bg-gradient-to-b from-[#131b32]/95 via-[#0e1428]/95 to-[#080d1a] border border-white/[0.12] rounded-3xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.9),0_0_35px_-5px_rgba(99,102,241,0.22)] backdrop-blur-2xl flex flex-col overflow-hidden text-neutral-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-neutral-800 flex items-center justify-between bg-neutral-950/80">
+        <div className="px-6 py-4.5 border-b border-white/[0.08] flex items-center justify-between bg-white/[0.02]">
           <div className="flex items-center gap-2.5">
             <div className={`p-2 rounded-lg border ${
               isPurchased
@@ -77,7 +77,7 @@ export const PromptPreviewModal: React.FC = () => {
           <button
             type="button"
             onClick={closePromptModal}
-            className="w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-300 hover:text-white transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] flex items-center justify-center text-neutral-300 hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

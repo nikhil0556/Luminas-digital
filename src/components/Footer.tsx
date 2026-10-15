@@ -38,14 +38,14 @@ export const Footer: React.FC = () => {
   };
 
   return (
-    <footer className="bg-neutral-950 border-t border-neutral-900 text-neutral-400">
+    <footer className="bg-gradient-to-b from-[#0a0f20] via-[#070b16] to-[#04060c] border-t border-white/[0.08] text-neutral-400">
       {/* Newsletter Bar */}
-      <div className="border-b border-neutral-900 bg-neutral-900/40">
+      <div className="border-b border-white/[0.06] bg-gradient-to-r from-indigo-950/25 via-violet-950/20 to-cyan-950/15 backdrop-blur-md blow-on-reach">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
             <div className="lg:col-span-6 space-y-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                <Sparkles className="w-3.5 h-3.5" />
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
                 <span>Free Creator Starter Pack</span>
               </div>
               <h3 className="text-2xl font-bold font-display text-white">
@@ -57,18 +57,18 @@ export const Footer: React.FC = () => {
             </div>
 
             <div className="lg:col-span-6">
-              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2 max-w-md lg:ml-auto">
+              <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2.5 max-w-md lg:ml-auto">
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email address"
-                  className="flex-1 px-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="flex-1 px-4 py-3 rounded-xl bg-[#070b18] border border-white/[0.1] text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all shadow-inner"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 transition-all cursor-pointer shrink-0"
+                  className="px-6 py-3 rounded-xl text-sm font-bold btn-premium-primary text-white flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all cursor-pointer shrink-0"
                 >
                   <span>Get Free Pack</span>
                   <ArrowRight className="w-4 h-4" />
@@ -94,7 +94,7 @@ export const Footer: React.FC = () => {
               onClick={() => handleNav('home')}
               className="flex items-center gap-2.5 cursor-pointer select-none"
             >
-              <div className="w-8 h-8 rounded-xl bg-indigo-600 flex items-center justify-center font-display font-black text-white text-sm">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-violet-600 flex items-center justify-center font-display font-black text-white text-sm shadow-md shadow-indigo-600/30">
                 L✦
               </div>
               <span className="font-display font-bold text-lg text-white">
@@ -179,6 +179,16 @@ export const Footer: React.FC = () => {
                   Business & Agency Kits
                 </button>
               </li>
+              <li>
+                <button
+                  type="button"
+                  onClick={() => handleNav('become-creator')}
+                  className="text-indigo-400 hover:text-indigo-300 transition-colors flex items-center gap-1.5 font-semibold pt-1"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>Become a Creator (Sell)</span>
+                </button>
+              </li>
             </ul>
           </div>
 
@@ -227,19 +237,19 @@ export const Footer: React.FC = () => {
               <li>
                 <button
                   type="button"
-                  onClick={() => handleNav('settings')}
-                  className="hover:text-indigo-400 transition-colors cursor-pointer text-indigo-400/90 font-medium"
+                  onClick={() => handleNav('login')}
+                  className="hover:text-white transition-colors"
                 >
-                  Store Settings & Config
+                  Sign In / Customer Portal
                 </button>
               </li>
               <li>
                 <button
                   type="button"
-                  onClick={() => handleNav('admin')}
-                  className="hover:text-indigo-400 transition-colors cursor-pointer"
+                  onClick={() => handleNav('signup')}
+                  className="hover:text-indigo-400 transition-colors"
                 >
-                  Store Admin Dashboard
+                  Create New Account
                 </button>
               </li>
             </ul>
@@ -283,12 +293,58 @@ export const Footer: React.FC = () => {
               </li>
             </ul>
           </div>
+
+          {/* Customer Care & Direct Support */}
+          <div className="col-span-2 sm:col-span-2 lg:col-span-1 space-y-3">
+            <h4 className="text-xs font-bold text-white uppercase tracking-wider mb-4 font-mono flex items-center gap-1.5">
+              <Mail className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Customer Care</span>
+            </h4>
+            <div className="p-3.5 rounded-xl bg-neutral-900/90 border border-neutral-800 space-y-2.5 text-xs shadow-lg">
+              <div>
+                <span className="text-[10px] text-neutral-400 block uppercase font-mono tracking-wider font-semibold">
+                  Official Support Email
+                </span>
+                <a
+                  href={`mailto:${settings.supportEmail || 'raj.nikhil0556@gmail.com'}`}
+                  className="text-white hover:text-indigo-300 font-semibold text-xs break-all block transition-colors select-all font-mono mt-0.5"
+                  title="Send email to Customer Care"
+                >
+                  {settings.supportEmail || 'raj.nikhil0556@gmail.com'}
+                </a>
+              </div>
+              <div className="text-[11px] text-neutral-400 space-y-1 pt-1.5 border-t border-neutral-800">
+                <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Replies in &lt; 12 hours</span>
+                </div>
+                <div className="text-neutral-400 text-[10px] leading-tight">
+                  Instant help for orders, prompt vaults, and access.
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleNav('contact')}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Mail className="w-3 h-3" />
+                <span>Open Support Desk</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Bottom copyright line */}
         <div className="mt-12 pt-6 border-t border-neutral-900 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-neutral-400">
           <p>© {new Date().getFullYear()} {settings.storeName}. All rights reserved.</p>
-          <div className="flex items-center gap-6">
+          <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+            <a
+              href={`mailto:${settings.supportEmail || 'raj.nikhil0556@gmail.com'}`}
+              className="inline-flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors"
+            >
+              <Mail className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Customer Care: <strong className="text-indigo-300 font-mono font-normal">{settings.supportEmail || 'raj.nikhil0556@gmail.com'}</strong></span>
+            </a>
             <span className="text-[11px] text-neutral-400">
               Made with precision for the modern creator economy.
             </span>

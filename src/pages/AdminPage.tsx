@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   DollarSign,
@@ -14,12 +14,22 @@ import {
   FileText,
   Search,
   ArrowRight,
-  Settings
+  Settings,
+  Shield,
+  ShieldAlert,
+  RefreshCw,
+  Lock,
+  ArrowLeft
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 import { Product } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { ModerationQueuePanel } from '../components/admin/ModerationQueuePanel';
+import { AuditLogsPanel } from '../components/admin/AuditLogsPanel';
+import { ReconciliationPanel } from '../components/admin/ReconciliationPanel';
 
 export const AdminPage: React.FC = () => {
+  const { user, userProfile } = useAuth();
   const {
     products,
     orders,
@@ -33,7 +43,85 @@ export const AdminPage: React.FC = () => {
     setActivePage
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'subscribers'>('overview');
+  // Server-Side Owner Verification State via Firebase Admin SDK
+  const [isVerifying, setIsVerifying] = useState<boolean>(true);
+  const [isAuthorizedOwner, setIsAuthorizedOwner] = useState<boolean>(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [ownerSession, setOwnerSession] = useState<{
+    uid: string;
+    email: string;
+    supportEmail: string;
+    ownerEmail: string;
+    verifiedAt: string;
+  } | null>(null);
+  const [adminDataReady, setAdminDataReady] = useState<boolean>(false);
+
+  // Authenticate owner with /api/admin/me before accessing or rendering data
+  useEffect(() => {
+    let isMounted = true;
+
+    async function verifyOwnerWithBackend() {
+      if (!user) {
+        if (isMounted) {
+          setIsVerifying(false);
+          setIsAuthorizedOwner(false);
+          setAdminDataReady(false);
+          setAuthError('Authentication required. Please sign in with your verified store owner account.');
+        }
+        return;
+      }
+
+      setIsVerifying(true);
+      setAuthError(null);
+
+      try {
+        const idToken = await user.getIdToken();
+        const res = await fetch('/api/admin/me', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${idToken}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!isMounted) return;
+
+        if (res.ok && data.authorized && data.role === 'owner') {
+          setIsAuthorizedOwner(true);
+          setOwnerSession(data);
+          // Unlock and load data ONLY after server authorization check succeeds
+          setAdminDataReady(true);
+          setIsVerifying(false);
+        } else {
+          setIsAuthorizedOwner(false);
+          setAdminDataReady(false);
+          setAuthError(
+            data.message ||
+            (res.status === 403
+              ? 'Access Forbidden. Your account is not authorized as the store owner.'
+              : 'Failed to verify store owner credentials.')
+          );
+          setIsVerifying(false);
+        }
+      } catch (err: any) {
+        if (!isMounted) return;
+        setIsAuthorizedOwner(false);
+        setAdminDataReady(false);
+        setAuthError(err.message || 'Network error verifying owner credentials.');
+        setIsVerifying(false);
+      }
+    }
+
+    verifyOwnerWithBackend();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [user]);
+
+  const [activeTab, setActiveTab] = useState<'overview' | 'products' | 'orders' | 'coupons' | 'subscribers' | 'moderation' | 'audit_logs' | 'reconciliation'>('overview');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isCreatingProduct, setIsCreatingProduct] = useState(false);
 
@@ -46,11 +134,11 @@ export const AdminPage: React.FC = () => {
   const [newFormat, setNewFormat] = useState('PDF / ePub');
   const [newDeliverable, setNewDeliverable] = useState('120 Pages');
 
-  // Metrics
-  const totalRevenue = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalOrdersCount = orders.length;
-  const totalProductsCount = products.length;
-  const totalSubscribersCount = newsletterSubscribers.length;
+  // Metrics (computed only when authorized and data is unlocked)
+  const totalRevenue = adminDataReady ? orders.reduce((sum, o) => sum + o.totalAmount, 0) : 0;
+  const totalOrdersCount = adminDataReady ? orders.length : 0;
+  const totalProductsCount = adminDataReady ? products.length : 0;
+  const totalSubscribersCount = adminDataReady ? newsletterSubscribers.length : 0;
 
   const handleSaveNewProduct = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +194,86 @@ export const AdminPage: React.FC = () => {
     showToast('Exported subscribers CSV', 'success');
   };
 
+  // 1. Pending Verification Screen: Data is withheld while validating ID token with Firebase Admin SDK
+  if (isVerifying) {
+    return (
+      <div className="min-h-[70vh] flex flex-col items-center justify-center px-4 py-20">
+        <div className="p-8 rounded-2xl bg-neutral-900 border border-neutral-800 text-center max-w-md w-full space-y-4 shadow-2xl animate-in fade-in">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center justify-center">
+            <Shield className="w-7 h-7 animate-pulse text-indigo-400" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="text-lg font-bold text-white font-display">
+              Verifying Owner Authorization
+            </h3>
+            <p className="text-xs text-neutral-400 leading-relaxed">
+              Validating session token against Firebase Admin SDK (/api/admin/me)...
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-2 text-xs text-indigo-400 font-mono">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            <span>Cryptographic owner check in progress</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Unauthorized Screen: Check failed or caller is not owner; data remains completely withheld
+  if (!isAuthorizedOwner || !adminDataReady) {
+    return (
+      <div className="min-h-[75vh] flex flex-col items-center justify-center px-4 py-20">
+        <div className="p-8 sm:p-10 rounded-2xl bg-neutral-900 border border-rose-500/30 text-center max-w-lg w-full space-y-6 shadow-2xl animate-in fade-in">
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/30 flex items-center justify-center">
+            <ShieldAlert className="w-8 h-8 text-rose-400" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-[11px] font-mono uppercase tracking-wider text-rose-400 font-bold px-2 py-0.5 rounded bg-rose-500/15 border border-rose-500/20">
+              HTTP 403 • ACCESS RESTRICTED
+            </span>
+            <h2 className="text-2xl font-bold font-display text-white">
+              Owner Authorization Required
+            </h2>
+            <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
+              {authError || 'Only the verified store owner is authorized to access the store management dashboard.'}
+            </p>
+            <p className="text-xs text-neutral-400 font-mono">
+              Authorized Store Owner: <strong className="text-indigo-300 font-mono">raj.nikhil0556@gmail.com</strong>
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setActivePage('home');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg shadow-indigo-600/20"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Return to Storefront</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsVerifying(true);
+                user?.getIdToken(true).then(() => {
+                  window.location.reload();
+                });
+              }}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-200 text-xs font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry Verification</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Authorized Store Owner: Render administrative dashboard and load data
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Admin Header */}
@@ -126,6 +294,9 @@ export const AdminPage: React.FC = () => {
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           {[
             { id: 'overview', label: 'Sales Overview' },
+            { id: 'moderation', label: 'Moderation Queue' },
+            { id: 'audit_logs', label: 'Security & Audit Logs' },
+            { id: 'reconciliation', label: 'Settlement & Route' },
             { id: 'products', label: 'Products Catalog' },
             { id: 'orders', label: 'Customer Orders' },
             { id: 'coupons', label: 'Discounts & Coupons' },
@@ -142,10 +313,10 @@ export const AdminPage: React.FC = () => {
                   setActiveTab(t.id as any);
                 }
               }}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors flex items-center gap-1.5 cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeTab === t.id
-                  ? 'bg-indigo-600 text-white shadow-md'
-                  : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/30 border border-indigo-400/40'
+                  : 'bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.08]'
               }`}
             >
               {t.id === 'settings' && <Settings className="w-3.5 h-3.5 text-indigo-400" />}
@@ -155,12 +326,31 @@ export const AdminPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Admin Authorization Security Status Banner */}
+      <div className="p-4 rounded-2xl bg-gradient-to-r from-[#0d162d]/90 via-[#0a1124]/90 to-[#070c1a] border border-white/[0.1] shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="text-neutral-300">
+            Owner & Support Mail:{' '}
+            <strong className="text-white font-mono">{ownerSession?.email || user?.email || 'raj.nikhil0556@gmail.com'}</strong>
+          </span>
+          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+            SUPER_ADMIN • VERIFIED OWNER
+          </span>
+        </div>
+        <div className="flex items-center gap-3 text-neutral-400 text-[11px] font-mono">
+          <span className="text-indigo-300">Firebase Admin SDK Verified</span>
+          <span className="text-neutral-600">•</span>
+          <span>{ownerSession?.verifiedAt ? new Date(ownerSession.verifiedAt).toLocaleTimeString() : 'Active Session'}</span>
+        </div>
+      </div>
+
       {/* TAB 1: OVERVIEW */}
       {activeTab === 'overview' && (
         <div className="space-y-8 animate-in fade-in">
           {/* Key Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-2 shadow-lg">
               <div className="flex items-center justify-between text-neutral-400">
                 <span className="text-xs font-medium">Total Digital Sales</span>
                 <DollarSign className="w-4 h-4 text-emerald-400" />
@@ -171,7 +361,7 @@ export const AdminPage: React.FC = () => {
               <p className="text-[11px] text-emerald-400 font-mono">100% automated delivery</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-2 shadow-lg">
               <div className="flex items-center justify-between text-neutral-400">
                 <span className="text-xs font-medium">Total Customer Orders</span>
                 <ShoppingBag className="w-4 h-4 text-indigo-400" />
@@ -182,7 +372,7 @@ export const AdminPage: React.FC = () => {
               <p className="text-[11px] text-neutral-400">Instant digital fulfillment</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-2 shadow-lg">
               <div className="flex items-center justify-between text-neutral-400">
                 <span className="text-xs font-medium">Active Digital Products</span>
                 <FileText className="w-4 h-4 text-purple-400" />
@@ -193,7 +383,7 @@ export const AdminPage: React.FC = () => {
               <p className="text-[11px] text-purple-400 font-mono">E-books, AI prompts & kits</p>
             </div>
 
-            <div className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+            <div className="p-5 rounded-2xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-2 shadow-lg">
               <div className="flex items-center justify-between text-neutral-400">
                 <span className="text-xs font-medium">Email Subscribers</span>
                 <Users className="w-4 h-4 text-amber-400" />
@@ -206,7 +396,7 @@ export const AdminPage: React.FC = () => {
           </div>
 
           {/* Recent Orders in Overview */}
-          <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4">
+          <div className="p-6 rounded-3xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-4 shadow-xl">
             <div className="flex items-center justify-between">
               <h3 className="text-base font-bold text-white font-display">Recent Customer Transactions</h3>
               <button
@@ -403,10 +593,10 @@ export const AdminPage: React.FC = () => {
             <span className="text-xs text-neutral-400">Real-time purchase logs</span>
           </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 overflow-x-auto">
+          <div className="p-6 rounded-3xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] overflow-x-auto shadow-xl backdrop-blur-xl">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-neutral-800 text-neutral-400 font-mono">
+                <tr className="border-b border-white/[0.08] text-neutral-400 font-mono">
                   <th className="pb-3">Order Number</th>
                   <th className="pb-3">Customer Email</th>
                   <th className="pb-3">Gateway</th>
@@ -415,7 +605,7 @@ export const AdminPage: React.FC = () => {
                   <th className="pb-3">Tokens</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody className="divide-y divide-white/[0.05]">
                 {orders.map(o => (
                   <tr key={o.id} className="text-neutral-200">
                     <td className="py-3 font-mono text-indigo-400">{o.orderNumber}</td>
@@ -443,7 +633,7 @@ export const AdminPage: React.FC = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {coupons.map(c => (
-              <div key={c.code} className="p-5 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-2">
+              <div key={c.code} className="p-5 rounded-2xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] space-y-2 shadow-lg backdrop-blur-xl hover:border-emerald-500/40 transition-all">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-base font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
                     {c.code}
@@ -473,23 +663,23 @@ export const AdminPage: React.FC = () => {
             <button
               type="button"
               onClick={handleExportCSV}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-2 border border-neutral-700"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-white/[0.06] hover:bg-white/[0.1] text-white flex items-center gap-2 border border-white/[0.1] transition-all cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Export CSV</span>
             </button>
           </div>
 
-          <div className="p-6 rounded-2xl bg-neutral-900 border border-neutral-800 overflow-x-auto">
+          <div className="p-6 rounded-3xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] overflow-x-auto shadow-xl backdrop-blur-xl">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-neutral-800 text-neutral-400 font-mono">
+                <tr className="border-b border-white/[0.08] text-neutral-400 font-mono">
                   <th className="pb-3">Email Address</th>
                   <th className="pb-3">Acquisition Source</th>
                   <th className="pb-3">Date Joined</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-neutral-800/60">
+              <tbody className="divide-y divide-white/[0.05]">
                 {newsletterSubscribers.map(s => (
                   <tr key={s.id} className="text-neutral-200">
                     <td className="py-3 text-white font-mono">{s.email}</td>
@@ -501,6 +691,27 @@ export const AdminPage: React.FC = () => {
             </table>
           </div>
         </div>
+      )}
+
+      {/* TAB 6: TRUST & MODERATION QUEUE */}
+      {activeTab === 'moderation' && (
+        <ModerationQueuePanel
+          onTakedownProduct={(productId) => {
+            deleteProduct(productId);
+            showToast('Product taken down from public catalog', 'info');
+          }}
+          showToast={showToast}
+        />
+      )}
+
+      {/* TAB 7: SECURITY & AUDIT LOGS */}
+      {activeTab === 'audit_logs' && (
+        <AuditLogsPanel showToast={showToast} />
+      )}
+
+      {/* TAB 8: SETTLEMENT & ROUTE RECONCILIATION */}
+      {activeTab === 'reconciliation' && (
+        <ReconciliationPanel showToast={showToast} />
       )}
     </div>
   );

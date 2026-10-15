@@ -1,13 +1,77 @@
-import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
-import firebaseConfig from '../../firebase-applet-config.json';
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAnalytics, isSupported, Analytics } from 'firebase/analytics';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  EmailAuthProvider,
+  signInWithPopup,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  deleteUser,
+  linkWithPopup,
+  linkWithCredential,
+  unlink
+} from 'firebase/auth';
+import {
+  initializeFirestore,
+  getFirestore,
+  doc,
+  getDocFromServer,
+  persistentLocalCache,
+  persistentMultipleTabManager
+} from 'firebase/firestore';
+import firebaseAppletConfig from '../../firebase-applet-config.json';
 
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
+// Your web app's Firebase configuration loaded from firebase-applet-config.json
+export const firebaseConfig = {
+  apiKey: firebaseAppletConfig.apiKey,
+  authDomain: firebaseAppletConfig.authDomain,
+  projectId: firebaseAppletConfig.projectId,
+  storageBucket: firebaseAppletConfig.storageBucket,
+  messagingSenderId: firebaseAppletConfig.messagingSenderId,
+  appId: firebaseAppletConfig.appId,
+  measurementId: firebaseAppletConfig.measurementId || "G-JF709JZH1R",
+  firestoreDatabaseId: firebaseAppletConfig.firestoreDatabaseId
+};
 
-// Initialize Firestore with custom database ID
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firebase
+export const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
+
+// Initialize Analytics (safely guarded for browser execution)
+export let analytics: Analytics | null = null;
+if (typeof window !== 'undefined') {
+  isSupported()
+    .then((supported) => {
+      if (supported) {
+        analytics = getAnalytics(app);
+      }
+    })
+    .catch((err) => {
+      console.warn('Firebase Analytics not initialized:', err);
+    });
+}
+
+// Initialize Firestore with specific database ID and forced long-polling for iframe resilience
+export const db = (() => {
+  const dbId = firebaseConfig.firestoreDatabaseId || 'ai-studio-luminadigital-5a9efa51-5c26-4687-86f2-158cad7d5cbc';
+  try {
+    return initializeFirestore(
+      app,
+      {
+        experimentalForceLongPolling: true
+      },
+      dbId
+    );
+  } catch (_e) {
+    return getFirestore(app, dbId);
+  }
+})();
 
 // Initialize Auth
 export const auth = getAuth(app);
@@ -18,19 +82,32 @@ googleProvider.setCustomParameters({
   prompt: 'select_account'
 });
 
-export { signInWithPopup, signOut };
+export {
+  signInWithPopup,
+  signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  reauthenticateWithPopup,
+  deleteUser,
+  linkWithPopup,
+  linkWithCredential,
+  unlink
+};
 
-// Validate connection to Firestore per skill guidelines
-export async function testConnection() {
+// Safe connection validator (invoked only on-demand, never executed automatically at boot)
+export async function testConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
+    return true;
   } catch (_err) {
-    // Expected on initial unauthenticated boot since rules protect database
+    return false;
   }
 }
-
-// Call connection test on boot
-testConnection();
 
 // Standardized error handler
 export enum OperationType {

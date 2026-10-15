@@ -44,19 +44,19 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
   const isPurchasedBundle = isProductPurchased('prod-prompts-duo-bundle-20');
 
   return (
-    <section id={id} className={`space-y-8 scroll-mt-24 ${className}`}>
+    <section id={id} className={`space-y-8 scroll-mt-24 blow-on-reach ${className}`}>
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-neutral-800 pb-6">
         <div className="space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
             <BookOpen className="w-3.5 h-3.5" />
-            <span>OFFICIAL DIGITAL PDF BOOK SECTION • $20 EACH</span>
+            <span>OFFICIAL DIGITAL PDF BOOK SECTION • {formatPrice(1699)} (~$20)</span>
           </div>
           <h2 className="text-2xl sm:text-4xl font-bold font-display text-white tracking-tight">
             Official ChatGPT “/” Prompt PDF Books & Guides
           </h2>
           <p className="text-sm text-neutral-300 leading-relaxed">
-            Due to intellectual property and premium curation, our full 100-prompt personal help vault and 50-prompt editing/designing collections are officially published as comprehensive, downloadable high-resolution PDF books at <strong>$20</strong> each.
+            Due to intellectual property and premium curation, our full 100-prompt personal help vault and 50-prompt editing/designing collections are officially published as comprehensive, downloadable high-resolution PDF books at <strong>{formatPrice(1699)}</strong> (~$20) each.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
             <div className="space-y-3 max-w-3xl">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="px-3 py-1 rounded-full text-xs font-bold font-mono bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                  SPECIAL DUO COMBO • BOTH BOOKS FOR $20
+                  SPECIAL DUO COMBO • BOTH BOOKS FOR {formatPrice(prodBundle.price)} (~$20)
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-900/90 text-neutral-200 border border-neutral-700">
                   9 Pages Total
@@ -90,7 +90,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                 The Ultimate 150 “/” Prompts PDF Books Duo
               </h3>
               <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed">
-                Get <strong>both</strong> official PDF books together: <em>50 Trending One-Word Prompts for Edits & Designs</em> + <em>100 Trending ChatGPT Prompts for Personal Help & Productivity</em>. Includes instant PDF downloads and lifetime unlocked copy access to both web vaults for just <strong>$20</strong>.
+                Get <strong>both</strong> official PDF books together: <em>50 Trending One-Word Prompts for Edits & Designs</em> + <em>100 Trending ChatGPT Prompts for Personal Help & Productivity</em>. Includes instant PDF downloads and lifetime unlocked copy access to both web vaults for just <strong>{formatPrice(prodBundle.price)}</strong> (~$20).
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 text-xs text-neutral-300">
@@ -141,14 +141,16 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                   <span>Download Both PDF Books</span>
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => addToCart(prodBundle, 1)}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  <span>Buy Both Books ($20)</span>
-                </button>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => addToCart(prodBundle, 1)}
+                    className="w-full py-3.5 rounded-xl bg-gradient-to-r from-pink-500 to-indigo-600 hover:from-pink-400 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                  >
+                    <ShoppingBag className="w-4 h-4" />
+                    <span>Buy Both Books ({formatPrice(prodBundle.price)})</span>
+                  </button>
+                </div>
               )}
 
               <button
@@ -167,15 +169,15 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Book 1: 50 Prompts for Edits & Designs ($20) */}
         {prod50 && (
-          <div className="relative rounded-3xl bg-neutral-900 border border-neutral-800 p-6 sm:p-8 flex flex-col justify-between hover:border-indigo-500/40 transition-all shadow-xl group">
+          <div className="relative rounded-3xl bg-gradient-to-b from-[#131b2e]/90 via-[#0e1424]/95 to-[#080d1a] border border-white/[0.09] p-6 sm:p-8 flex flex-col justify-between hover:border-indigo-400/40 backdrop-blur-xl transition-all duration-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_45px_-12px_rgba(0,0,0,0.8)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_28px_55px_-12px_rgba(99,102,241,0.25)] group hover:-translate-y-1.5">
             <div className="space-y-5">
               {/* Top Meta Bar */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
                   <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                    PDF BOOK #1 • $20
+                    PDF BOOK #1 • {formatPrice(prod50.price)} (~$20)
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-800 text-neutral-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/[0.06] text-neutral-300 border border-white/[0.08]">
                     5-Page PDF Guide
                   </span>
                 </div>
@@ -200,7 +202,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
               </div>
 
               {/* Table of Contents Highlights */}
-              <div className="p-3.5 rounded-2xl bg-neutral-950/70 border border-neutral-800/80 space-y-2">
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.08] space-y-2 backdrop-blur-md">
                 <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-neutral-400 block">
                   Included in this 5-Page PDF Book:
                 </span>
@@ -226,7 +228,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
             </div>
 
             {/* Bottom Actions & Price */}
-            <div className="mt-6 pt-5 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="mt-6 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">
                   Official PDF Book Price
@@ -248,7 +250,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => navigateToProduct(prod50.slug)}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors border border-neutral-700 text-center cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/[0.05] hover:bg-white/[0.1] text-neutral-200 transition-colors border border-white/[0.1] text-center cursor-pointer"
                 >
                   Details
                 </button>
@@ -266,10 +268,10 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                   <button
                     type="button"
                     onClick={() => addToCart(prod50, 1)}
-                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold btn-premium-primary text-white flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Buy PDF Book ($20)</span>
+                    <span>Buy PDF Book ({formatPrice(prod50.price)})</span>
                   </button>
                 )}
               </div>
@@ -279,15 +281,15 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
 
         {/* Book 2: 100 Prompts for Personal Help & Productivity ($20) */}
         {prod100 && (
-          <div className="relative rounded-3xl bg-neutral-900 border border-neutral-800 p-6 sm:p-8 flex flex-col justify-between hover:border-cyan-500/40 transition-all shadow-xl group">
+          <div className="relative rounded-3xl bg-gradient-to-b from-[#0e1c2b]/90 via-[#0a1524]/95 to-[#070e1a] border border-white/[0.09] p-6 sm:p-8 flex flex-col justify-between hover:border-cyan-400/40 backdrop-blur-xl transition-all duration-300 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_20px_45px_-12px_rgba(0,0,0,0.8)] hover:shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_28px_55px_-12px_rgba(6,182,212,0.25)] group hover:-translate-y-1.5">
             <div className="space-y-5">
               {/* Top Meta Bar */}
               <div className="flex items-center justify-between gap-2 flex-wrap">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
-                    PDF BOOK #2 • $20
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 shadow-sm">
+                    PDF BOOK #2 • {formatPrice(prod100.price)} (~$20)
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-neutral-800 text-neutral-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/[0.06] text-neutral-300 border border-white/[0.08]">
                     4-Page PDF Cheatsheet
                   </span>
                 </div>
@@ -312,7 +314,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
               </div>
 
               {/* Table of Contents Highlights */}
-              <div className="p-3.5 rounded-2xl bg-neutral-950/70 border border-neutral-800/80 space-y-2">
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/[0.08] space-y-2 backdrop-blur-md">
                 <span className="text-[10px] font-mono uppercase tracking-wider font-bold text-neutral-400 block">
                   Included in this 4-Page PDF Book:
                 </span>
@@ -338,7 +340,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
             </div>
 
             {/* Bottom Actions & Price */}
-            <div className="mt-6 pt-5 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="mt-6 pt-5 border-t border-white/[0.08] flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-wider block">
                   Official PDF Book Price
@@ -360,7 +362,7 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                 <button
                   type="button"
                   onClick={() => navigateToProduct(prod100.slug)}
-                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 transition-colors border border-neutral-700 text-center cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2.5 rounded-xl text-xs font-semibold bg-white/[0.05] hover:bg-white/[0.1] text-neutral-200 transition-colors border border-white/[0.1] text-center cursor-pointer"
                 >
                   Details
                 </button>
@@ -378,10 +380,10 @@ export const PdfBooksPromptsSection: React.FC<PdfBooksPromptsSectionProps> = ({
                   <button
                     type="button"
                     onClick={() => addToCart(prod100, 1)}
-                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold bg-cyan-600 hover:bg-cyan-500 text-white flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/30 transition-all cursor-pointer"
+                    className="flex-1 sm:flex-initial px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-cyan-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-white flex items-center justify-center gap-1.5 shadow-lg shadow-cyan-600/30 transition-all cursor-pointer"
                   >
                     <ShoppingBag className="w-3.5 h-3.5" />
-                    <span>Buy PDF Book ($20)</span>
+                    <span>Buy PDF Book ({formatPrice(prod100.price)})</span>
                   </button>
                 )}
               </div>

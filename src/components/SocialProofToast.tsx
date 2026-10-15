@@ -2,83 +2,95 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingBag, X } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
-const RECENT_ACTIVITIES = [
-  { name: 'Sarah K.', location: 'London', product: 'How to Be Financially Free at a Young Age', time: '3 minutes ago' },
-  { name: 'Marcus C.', location: 'Austin, TX', product: 'The Ultimate AI Creator & Business Mega-Pack', time: '7 minutes ago' },
-  { name: 'Elena R.', location: 'Berlin', product: 'Ultimate Life & Business Notion OS', time: '12 minutes ago' },
-  { name: 'Devon V.', location: 'Toronto', product: 'Content Machine: 365 Viral Video Prompts', time: '18 minutes ago' }
+interface SocialProofEvent {
+  buyer: string;
+  location: string;
+  productTitle: string;
+  timeAgo: string;
+}
+
+const SAMPLE_EVENTS: SocialProofEvent[] = [
+  { buyer: 'Alex R.', location: 'Mumbai, India', productTitle: '100 Trending ChatGPT "/" Prompts', timeAgo: '2 minutes ago' },
+  { buyer: 'Sarah K.', location: 'London, UK', productTitle: 'How to Be Financially Free in Young Age', timeAgo: '5 minutes ago' },
+  { buyer: 'David M.', location: 'New York, USA', productTitle: 'Ultimate Notion Freelance OS', timeAgo: '8 minutes ago' },
+  { buyer: 'Priya S.', location: 'Bengaluru, India', productTitle: 'AI Mega-Prompt Engineering Bible', timeAgo: '12 minutes ago' },
+  { buyer: 'Elena V.', location: 'Berlin, Germany', productTitle: 'The Ultimate 150 "/" Prompts PDF Books Duo', timeAgo: '16 minutes ago' }
 ];
 
 export const SocialProofToast: React.FC = () => {
-  const { navigateToProduct, products, settings } = useStore();
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [visible, setVisible] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const { settings } = useStore();
+  const [currentEvent, setCurrentEvent] = useState<SocialProofEvent | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    if (dismissed || !settings.enableSocialProofToasts) return;
+    if (!settings?.enableSocialProofToasts || isDismissed) {
+      setIsVisible(false);
+      return;
+    }
 
-    // Show after 5 seconds
-    const showTimer = setTimeout(() => {
-      setVisible(true);
-    }, 5000);
+    let eventIdx = 0;
+    const triggerNext = () => {
+      const nextEv = SAMPLE_EVENTS[eventIdx % SAMPLE_EVENTS.length];
+      eventIdx++;
+      setCurrentEvent(nextEv);
+      setIsVisible(true);
 
-    // Hide after 6 seconds, then cycle
-    const cycleTimer = setInterval(() => {
-      setVisible(false);
-      setTimeout(() => {
-        setCurrentIdx(prev => (prev + 1) % RECENT_ACTIVITIES.length);
-        setVisible(true);
-      }, 10000); // 10s quiet interval
-    }, 16000);
+      const hideTimer = setTimeout(() => {
+        setIsVisible(false);
+      }, 5000);
+
+      return hideTimer;
+    };
+
+    // First show after 6s
+    const initialTimer = setTimeout(() => {
+      triggerNext();
+    }, 6000);
+
+    // Repeat every 22s
+    const intervalTimer = setInterval(() => {
+      triggerNext();
+    }, 22000);
 
     return () => {
-      clearTimeout(showTimer);
-      clearInterval(cycleTimer);
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
     };
-  }, [dismissed, settings.enableSocialProofToasts]);
+  }, [settings?.enableSocialProofToasts, isDismissed]);
 
-  if (!settings.enableSocialProofToasts || dismissed || !visible) return null;
-
-  const activity = RECENT_ACTIVITIES[currentIdx];
-
-  const handleClick = () => {
-    const found = products.find(p => p.title.toLowerCase().includes(activity.product.toLowerCase().slice(0, 15)));
-    if (found) {
-      navigateToProduct(found.slug);
-    }
-  };
+  if (!settings?.enableSocialProofToasts || !isVisible || !currentEvent || isDismissed) {
+    return null;
+  }
 
   return (
-    <div
-      onClick={handleClick}
-      className="fixed bottom-5 left-5 z-30 max-w-xs bg-neutral-900/95 border border-neutral-800 rounded-2xl p-3 shadow-2xl backdrop-blur-md flex items-center gap-3 cursor-pointer hover:border-neutral-700 transition-all animate-in slide-in-from-bottom-5"
-    >
-      <div className="w-9 h-9 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center shrink-0">
-        <ShoppingBag className="w-4 h-4" />
+    <div className="fixed bottom-5 left-5 z-40 max-w-sm animate-in fade-in slide-in-from-bottom-3 duration-300 pointer-events-auto">
+      <div className="glass-panel p-3.5 rounded-2xl border border-white/10 bg-[#0a0f1e]/90 backdrop-blur-xl shadow-2xl flex items-center gap-3 text-xs">
+        <div className="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 shrink-0">
+          <ShoppingBag className="w-4 h-4" />
+        </div>
+        <div className="flex-1 min-w-0 pr-1">
+          <p className="text-white font-medium truncate">
+            <span className="font-semibold">{currentEvent.buyer}</span> from {currentEvent.location}
+          </p>
+          <p className="text-neutral-400 text-[11px] truncate">
+            Purchased <span className="text-indigo-300 font-medium">{currentEvent.productTitle}</span>
+          </p>
+          <p className="text-[10px] text-neutral-500 mt-0.5">{currentEvent.timeAgo}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setIsVisible(false);
+            setIsDismissed(true);
+          }}
+          className="text-neutral-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors cursor-pointer"
+          title="Dismiss"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
-
-      <div className="flex-1 min-w-0 pr-1">
-        <p className="text-[11px] text-neutral-400">
-          <strong className="text-white font-medium">{activity.name}</strong> in {activity.location}
-        </p>
-        <p className="text-xs font-semibold text-neutral-200 truncate mt-0.5">
-          Purchased {activity.product}
-        </p>
-        <span className="text-[10px] text-neutral-400 font-mono">{activity.time}</span>
-      </div>
-
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setDismissed(true);
-        }}
-        className="text-neutral-400 hover:text-neutral-300 p-1 shrink-0"
-        aria-label="Dismiss notification"
-      >
-        <X className="w-3.5 h-3.5" />
-      </button>
     </div>
   );
 };
+

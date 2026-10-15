@@ -44,7 +44,7 @@ export const FaqPage: React.FC = () => {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder="Search questions (e.g., refund, format, Notion, ChatGPT)..."
-          className="w-full pl-10 pr-4 py-3 rounded-xl bg-neutral-900 border border-neutral-800 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500"
+          className="w-full pl-10 pr-4 py-3 rounded-xl neu-inset text-sm text-white placeholder-neutral-500"
         />
       </div>
 
@@ -57,8 +57,8 @@ export const FaqPage: React.FC = () => {
             onClick={() => setSelectedCategory(cat)}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
               selectedCategory === cat
-                ? 'bg-indigo-600 text-white'
-                : 'bg-neutral-900 text-neutral-400 hover:text-white border border-neutral-800'
+                ? 'clay-btn-gold !text-neutral-950 font-bold'
+                : 'neu-raised text-neutral-300 hover:text-white'
             }`}
           >
             {cat}
@@ -69,7 +69,7 @@ export const FaqPage: React.FC = () => {
       {/* Accordion list */}
       <div className="space-y-3">
         {filteredFaqs.length === 0 ? (
-          <div className="p-8 text-center text-xs text-neutral-400 bg-neutral-900/50 rounded-xl border border-neutral-800">
+          <div className="p-8 text-center text-xs text-neutral-400 glass rounded-2xl">
             No matching questions found. Try another search keyword.
           </div>
         ) : (
@@ -78,7 +78,7 @@ export const FaqPage: React.FC = () => {
             return (
               <div
                 key={faq.id}
-                className="rounded-xl bg-neutral-900/60 border border-neutral-800 overflow-hidden transition-all"
+                className="rounded-2xl glass overflow-hidden transition-all duration-300"
               >
                 <button
                   type="button"

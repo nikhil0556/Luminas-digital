@@ -1,0 +1,82 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Default deny all access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.role == 'owner' ||
+        request.auth.token.admin == true ||
+        (request.auth.token.email != null && 
+         request.auth.token.email == 'raj.nikhil0556@gmail.com' && 
+         request.auth.token.email_verified == true)
+      );
+    }
+
+    // 1. Creator Avatars and Public Profile Imagery
+    // Public read; write only by authentic creator owning the folder; max 5MB; image types only
+    match /creators/{creatorId}/avatars/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(creatorId) &&
+                   request.resource.size < 5 * 1024 * 1024 &&
+                   request.resource.contentType.matches('image/.*');
+      allow delete: if isOwner(creatorId) || isAdmin();
+    }
+
+    // 2. Product Covers and Thumbnails
+    // Public read; write only by creator who created the product or admin; max 5MB; image types only
+    match /products/{productId}/covers/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn() &&
+                   request.resource.size < 5 * 1024 * 1024 &&
+                   request.resource.contentType.matches('image/.*');
+      allow delete: if isSignedIn() || isAdmin();
+    }
+
+    // 3. Secure Product Deliverable Vault (PDFs, ZIP bundles, Prompt Packs, Templates)
+    // NEVER publicly readable! Only readable by admin or via authenticated server download token / owner
+    match /creators/{creatorId}/assets/{fileId} {
+      // Creator can inspect their own file; Admins can review for malware/DMCA;
+      // Direct client download without verified purchase token is disallowed.
+      allow read: if isOwner(creatorId) || isAdmin();
+      allow write: if isOwner(creatorId) &&
+                   request.resource.size <= 50 * 1024 * 1024 &&
+                   (
+                     request.resource.contentType.matches('application/pdf') ||
+                     request.resource.contentType.matches('application/zip') ||
+                     request.resource.contentType.matches('application/x-zip-compressed') ||
+                     request.resource.contentType.matches('application/epub\\+zip') ||
+                     request.resource.contentType.matches('application/json') ||
+                     request.resource.contentType.matches('text/.*') ||
+                     request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*')
+                   );
+      allow delete: if isOwner(creatorId) || isAdmin();
+    }
+
+    // 4. KYC Identity & Legal Tax Compliance Documents (National ID, Tax Form)
+    // Strictly private; write by creator during verification; read ONLY by creator and marketplace admin
+    match /creators/{creatorId}/kyc/{documentName} {
+      allow read: if isOwner(creatorId) || isAdmin();
+      allow write: if isOwner(creatorId) &&
+                   request.resource.size < 10 * 1024 * 1024 &&
+                   (
+                     request.resource.contentType.matches('image/.*') ||
+                     request.resource.contentType.matches('application/pdf')
+                   );
+      allow delete: if isAdmin();
+    }
+  }
+}

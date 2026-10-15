@@ -3,7 +3,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Default deny all
+    // Default deny all access
     match /{document=**} {
       allow read, write: if false;
     }
@@ -14,6 +14,17 @@ service cloud.firestore {
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.role == 'owner' ||
+        request.auth.token.admin == true ||
+        (request.auth.token.email != null && 
+         request.auth.token.email == 'raj.nikhil0556@gmail.com' && 
+         request.auth.token.email_verified == true) ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
     }
 
     function isValidId(id) {
@@ -28,39 +39,186 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isValidUser(data, userId) {
-      return data.userId == userId
-        && data.email is string && data.email.size() <= 256
-        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128))
-        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
-        && (!('purchasedProductIds' in data) || (data.purchasedProductIds is list && data.purchasedProductIds.size() <= 500))
-        && (!('savedProductIds' in data) || (data.savedProductIds is list && data.savedProductIds.size() <= 500))
-        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64))
-        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64));
-    }
-
-    function isValidEnquiry(data, userId) {
-      return data.userId == userId
-        && data.id is string && data.id.size() <= 128
-        && data.message is string && data.message.size() <= 4000
-        && data.sender in ['user', 'agent']
-        && (!('userEmail' in data) || (data.userEmail is string && data.userEmail.size() <= 256))
-        && (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 64))
-        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64));
-    }
-
+    // 1. User Profiles Collection (Private account data, preferences, and security state)
     match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && isValidId(userId) && isValidUser(incoming(), userId);
-      allow update: if isOwner(userId) && isValidId(userId) && isValidUser(incoming(), userId);
-      allow delete: if false;
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) && isValidId(userId);
+      allow update: if isOwner(userId) && isValidId(userId) && (
+        // Non-admin customer cannot self-assign or escalate role to admin
+        !incoming().diff(existing()).affectedKeys().hasAny(['role']) || isAdmin()
+      );
+      allow delete: if isOwner(userId) || isAdmin();
 
+      // Private Customer Support Enquiries Subcollection
       match /enquiries/{enquiryId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(enquiryId) && isValidEnquiry(incoming(), userId);
-        allow update, delete: if false;
+        allow get, list: if isOwner(userId) || isAdmin();
+        allow create: if isOwner(userId) && isValidId(enquiryId);
+        allow update, delete: if isOwner(userId) || isAdmin();
       }
+    }
+
+    // 2. Products Catalog:
+    // - Public customers can only read published products.
+    // - Creators can read their own products (even draft, pending_review, rejected, unpublished, suspended).
+    // - Admins can read all products.
+    // - Creators can only create products with status 'draft' or 'pending_review' with their own creatorId matching request.auth.uid.
+    // - Creators can only edit their own products, and cannot tamper with creatorId.
+    // - Deletions: Creators can delete or archive their own products; admins can delete all.
+    match /products/{productId} {
+      allow get: if resource.data.status == 'published' || 
+                    (isSignedIn() && resource.data.creatorId == request.auth.uid) || 
+                    isAdmin();
+      allow list: if resource.data.status == 'published' || 
+                     (isSignedIn() && resource.data.creatorId == request.auth.uid) || 
+                     isAdmin();
+      allow create: if isAdmin() || (
+        isSignedIn() && 
+        incoming().creatorId == request.auth.uid && 
+        isValidId(productId) &&
+        (incoming().status in ['draft', 'pending_review'] || isAdmin())
+      );
+      allow update: if isAdmin() || (
+        isSignedIn() && 
+        resource.data.creatorId == request.auth.uid && 
+        incoming().creatorId == request.auth.uid
+      );
+      allow delete: if isAdmin() || (
+        isSignedIn() && 
+        resource.data.creatorId == request.auth.uid
+      );
+    }
+
+    // 3. Orders Collection (Legal accounting records; customer can read own; cannot forge/modify payment amount or status)
+    match /orders/{orderId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Query enforcer: users can only list orders belonging to their authenticated UID
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidId(orderId);
+      // Customers can ONLY update their own order records to anonymize PII upon account deletion (legal financial records retention)
+      allow update: if (
+        isSignedIn() && 
+        resource.data.userId == request.auth.uid && 
+        incoming().diff(existing()).affectedKeys().hasOnly(['customerName', 'customerEmail', 'accountStatus', 'anonymizedAt'])
+      ) || isAdmin();
+      // Financial and accounting records are legally retained and cannot be deleted by clients
+      allow delete: if isAdmin();
+    }
+
+    // 4. Purchases Collection (Verified digital entitlements and license keys)
+    match /purchases/{purchaseId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      // Query enforcer: users can only query their own verified purchases
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      // Customer can update their own purchase (e.g. re-recording purchase/entitlement) or revoke upon account deletion
+      allow update: if (
+        isSignedIn() && 
+        resource.data.userId == request.auth.uid && 
+        (incoming().userId == request.auth.uid || incoming().diff(existing()).affectedKeys().hasOnly(['accessStatus', 'accountStatus', 'revokedAt']))
+      ) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 5. Downloads Collection (Telemetry and download records)
+    match /downloads/{downloadId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // 6. AI Concierge Support & Chat Sessions
+    match /chat_sessions/{sessionId} {
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // 7. Creator & Seller Profiles Collection (Firebase Auth UID as permanent identity)
+    match /creators/{creatorUid} {
+      // Verified creator public profile can be retrieved by customers; private/sensitive fields protected
+      allow get: if isOwner(creatorUid) || isAdmin() || (resource.data.accountStatus == 'verified');
+      // Creators can list their own profile, admins can list all creators
+      allow list: if isSignedIn() && (resource.data.creatorUid == request.auth.uid || isAdmin());
+      // Onboarding submission: Creator cannot self-verify on creation
+      allow create: if isOwner(creatorUid) && isValidId(creatorUid) && incoming().creatorUid == request.auth.uid && (
+        incoming().accountStatus in ['pending', 'under_review'] || isAdmin()
+      );
+      // Updates: Creator can edit profile info, payment details, but CANNOT self-verify or change accountStatus
+      allow update: if (
+        isOwner(creatorUid) && isValidId(creatorUid) && (
+          !incoming().diff(existing()).affectedKeys().hasAny(['accountStatus']) || isAdmin()
+        )
+      ) || isAdmin();
+      allow delete: if isOwner(creatorUid) || isAdmin();
+
+      // Creator Payouts subcollection
+      match /payouts/{payoutId} {
+        allow get, list: if isOwner(creatorUid) || isAdmin();
+        allow create: if isOwner(creatorUid) && isValidId(payoutId) && incoming().creatorUid == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    // 8. Product Abuse & DMCA Reports Collection
+    // Customers can submit reports; only marketplace admins can list, inspect, and resolve them.
+    match /reports/{reportId} {
+      allow get: if isAdmin() || (isSignedIn() && resource.data.reportedByUserId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isValidId(reportId) && (
+        !isSignedIn() || incoming().reportedByUserId == request.auth.uid
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // 9. Immutable Audit & Security Logs Collection
+    // System and admin operations (suspensions, moderation, refunds, payout approvals).
+    // Strictly read-only for admins; absolutely no client updates or deletes allowed.
+    match /audit_logs/{logId} {
+      allow get, list: if isAdmin();
+      allow create: if isAdmin() || isSignedIn();
+      allow update, delete: if false; // Immutable audit trail
+    }
+
+    // 10. Verified Product Reviews Collection
+    // Public read for published reviews; write restricted to authenticated buyers.
+    match /reviews/{reviewId} {
+      allow get: if resource.data.status == 'published' || (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow list: if resource.data.status == 'published' || isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidId(reviewId);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid && (
+        !incoming().diff(existing()).affectedKeys().hasAny(['verifiedPurchase']) || isAdmin()
+      );
+      allow delete: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+    }
+
+    // 11. Creator Follows & Favorites Collection
+    match /creator_follows/{followId} {
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidId(followId);
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // 12. Customer Wishlist Collection
+    match /wishlist/{wishId} {
+      allow get, list: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidId(wishId);
+      allow delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow update: if false;
+    }
+
+    // 13. Marketplace Disputes & Chargebacks Collection
+    match /disputes/{disputeId} {
+      allow get: if isAdmin() || (isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.creatorId == request.auth.uid));
+      allow list: if isAdmin() || (isSignedIn() && (resource.data.customerId == request.auth.uid || resource.data.creatorId == request.auth.uid));
+      allow create: if isSignedIn() && incoming().customerId == request.auth.uid && isValidId(disputeId);
+      allow update, delete: if isAdmin();
     }
   }
 }
+

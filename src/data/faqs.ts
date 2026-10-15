@@ -52,7 +52,7 @@ export const FAQS: FAQItem[] = [
     id: 'faq-8',
     category: 'Refunds & Support',
     question: 'What is your refund policy for digital products?',
-    answer: 'We stand behind the quality of our digital resources with a 14-day customer satisfaction guarantee. If a product does not deliver the promised value or you experience technical difficulties our team cannot resolve, simply contact our support team at support@luminadigital.com for a hassle-free resolution.'
+    answer: 'We stand behind the quality of our digital resources with a 14-day customer satisfaction guarantee. If a product does not deliver the promised value or you experience technical difficulties our team cannot resolve, simply contact our customer care team at raj.nikhil0556@gmail.com for a hassle-free resolution.'
   },
   {
     id: 'faq-9',

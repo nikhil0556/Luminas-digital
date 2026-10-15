@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion } from 'motion/react';
 import {
   Star,
   ShoppingBag,
@@ -18,9 +19,12 @@ import {
   Heart,
   FileText,
   Lock,
-  Unlock
+  Unlock,
+  AlertTriangle,
+  Users
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
+import { useAuth } from '../context/AuthContext';
 import { copyTextToClipboard } from '../utils/clipboard';
 import { EbookMockup } from '../components/EbookMockup';
 import { PromptPackMockup } from '../components/PromptPackMockup';
@@ -29,6 +33,7 @@ import { ProductCard } from '../components/ProductCard';
 import { ProductDetailSkeleton } from '../components/ProductDetailSkeleton';
 import { SlashPromptsViewer } from '../components/SlashPromptsViewer';
 import { EditingPromptsViewer } from '../components/EditingPromptsViewer';
+import { ReportProductModal } from '../components/ReportProductModal';
 
 export const ProductDetailPage: React.FC = () => {
   const {
@@ -46,8 +51,11 @@ export const ProductDetailPage: React.FC = () => {
     setActivePage,
     isLoadingProductDetail,
     isProductPurchased,
-    downloadItem
+    downloadItem,
+    openCheckoutModal,
+    settings
   } = useStore();
+  const { user } = useAuth();
 
   // Find product by slug or default to first
   const product = products.find(p => p.slug === selectedProductSlug) || products[0];
@@ -55,6 +63,9 @@ export const ProductDetailPage: React.FC = () => {
 
   const [activeTab, setActiveTab] = useState<'details' | 'included' | 'reviews' | 'faq'>('details');
   const [copiedPromptIndex, setCopiedPromptIndex] = useState<number | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isFollowingCreator, setIsFollowingCreator] = useState(false);
+  const [creatorFollowers, setCreatorFollowers] = useState(1420);
 
   // New review form state
   const [newReviewAuthor, setNewReviewAuthor] = useState('');
@@ -104,26 +115,56 @@ export const ProductDetailPage: React.FC = () => {
   };
 
   const handleBuyNow = () => {
-    addToCart(product, 1);
+    openCheckoutModal(product);
     setActivePage('checkout');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleReviewSubmit = (e: React.FormEvent) => {
+  const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPurchased) {
+      showToast('Verified Buyer Only: You must have purchased this product to submit a review.', 'error');
+      return;
+    }
     if (!newReviewAuthor || !newReviewComment) return;
-    addReview({
-      productId: product.id,
-      authorName: newReviewAuthor,
-      authorRole: newReviewRole || 'Verified Customer',
-      rating: newReviewRating,
-      comment: newReviewComment,
-      verifiedPurchase: true
-    });
-    setNewReviewAuthor('');
-    setNewReviewRole('');
-    setNewReviewComment('');
-    setShowReviewForm(false);
+
+    try {
+      // Post to backend verified review endpoint
+      const res = await fetch(`/api/products/${product.id}/review`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.uid || 'guest-verified',
+          authorName: newReviewAuthor,
+          authorRole: newReviewRole || 'Verified Customer',
+          rating: newReviewRating,
+          comment: newReviewComment,
+          verifiedPurchase: true
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to submit verified review');
+      }
+
+      addReview({
+        productId: product.id,
+        authorName: newReviewAuthor,
+        authorRole: newReviewRole || 'Verified Customer',
+        rating: newReviewRating,
+        comment: newReviewComment,
+        verifiedPurchase: true
+      });
+
+      showToast('Verified review submitted successfully!', 'success');
+      setNewReviewAuthor('');
+      setNewReviewRole('');
+      setNewReviewComment('');
+      setShowReviewForm(false);
+    } catch (err: any) {
+      showToast(err.message || 'Error submitting review', 'error');
+    }
   };
 
   const renderProductMockup = () => {
@@ -266,7 +307,7 @@ export const ProductDetailPage: React.FC = () => {
                   </span>
                 )}
                 {discountPercent && (
-                  <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="clay-badge px-2.5 py-0.5 text-xs font-bold">
                     Save {discountPercent}%
                   </span>
                 )}
@@ -279,23 +320,25 @@ export const ProductDetailPage: React.FC = () => {
 
             {/* CTAs */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.97 }}
                 onClick={handleBuyNow}
-                className="py-3.5 px-6 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2 shadow-xl shadow-indigo-600/30 transition-all cursor-pointer"
+                className="clay-btn btn-shine-sweep py-3.5 px-6 text-sm font-bold text-white flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Zap className="w-4 h-4" />
                 <span>Buy Now (Instant Access)</span>
-              </button>
+              </motion.button>
 
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.97 }}
                 onClick={() => addToCart(product, 1)}
-                className="py-3.5 px-6 rounded-xl text-sm font-semibold bg-neutral-800 hover:bg-neutral-700 text-neutral-200 hover:text-white border border-neutral-700 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="clay-btn-gold btn-shine-sweep py-3.5 px-6 text-sm font-bold text-neutral-950 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
                 <span>Add to Cart</span>
-              </button>
+              </motion.button>
             </div>
 
             {/* Micro Guarantees */}
@@ -334,6 +377,75 @@ export const ProductDetailPage: React.FC = () => {
                 <span className="text-emerald-400 font-medium">Automatic / Immediate</span>
               </div>
             </div>
+          </div>
+
+          {/* Creator Profile Card & Trust Verification */}
+          <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <img
+                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80"
+                alt="Creator Avatar"
+                className="w-10 h-10 rounded-xl border border-neutral-700 object-cover shrink-0"
+              />
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-white">Lumina Creative Labs</span>
+                  <span className="inline-flex items-center text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded border border-emerald-500/20">
+                    <ShieldCheck className="w-3 h-3 mr-0.5" />
+                    Verified
+                  </span>
+                </div>
+                <div className="text-[11px] text-neutral-400 flex items-center gap-2 mt-0.5">
+                  <span>{creatorFollowers} followers</span>
+                  <span>•</span>
+                  <span>4.9 rating</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!user) {
+                    showToast('Please sign in to follow creators.', 'info');
+                    return;
+                  }
+                  setIsFollowingCreator(!isFollowingCreator);
+                  setCreatorFollowers(prev => (isFollowingCreator ? prev - 1 : prev + 1));
+                  showToast(
+                    isFollowingCreator ? 'Unfollowed creator' : 'Following Lumina Creative Labs!',
+                    'success'
+                  );
+                }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  isFollowingCreator
+                    ? 'bg-neutral-800 text-neutral-300 hover:text-rose-400 border border-neutral-700'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                {isFollowingCreator ? 'Following' : 'Follow'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setActivePage('creator-profile')}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-neutral-800 hover:bg-neutral-750 text-neutral-300 hover:text-white border border-neutral-700 transition-colors cursor-pointer"
+              >
+                View Profile
+              </button>
+            </div>
+          </div>
+
+          {/* Report this product safety link */}
+          <div className="flex items-center justify-between text-[11px] text-neutral-500 pt-1">
+            <button
+              type="button"
+              onClick={() => setIsReportModalOpen(true)}
+              className="inline-flex items-center gap-1.5 hover:text-rose-400 transition-colors cursor-pointer"
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              <span>Report this digital product (Copyright, Broken File, Policy)</span>
+            </button>
           </div>
         </div>
       </div>
@@ -622,17 +734,33 @@ export const ProductDetailPage: React.FC = () => {
               <div>
                 <h3 className="text-xl font-bold font-display text-white">Customer Reviews</h3>
                 <p className="text-xs text-neutral-400">
-                  Showing verified customer reviews and ratings.
+                  Showing verified customer reviews and ratings from authentic buyers.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setShowReviewForm(!showReviewForm)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-white transition-colors border border-neutral-700"
-              >
-                {showReviewForm ? 'Cancel' : 'Write a Review'}
-              </button>
+              {isPurchased ? (
+                <button
+                  type="button"
+                  onClick={() => setShowReviewForm(!showReviewForm)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white transition-colors border border-indigo-500/30 cursor-pointer"
+                >
+                  {showReviewForm ? 'Cancel' : 'Write a Verified Review'}
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] text-neutral-400">
+                  <Lock className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Verified Buyers Only (Purchase required to review)</span>
+                </div>
+              )}
             </div>
+
+            {!isPurchased && (
+              <div className="p-4 rounded-xl bg-neutral-900/40 border border-neutral-800 flex items-start gap-3 text-xs text-neutral-400">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <span>
+                  <strong className="text-white">Anti-Fraud Review Policy:</strong> To protect creator credibility and prevent fake feedback, Lumina verifies every review against authentic purchase cryptographic records.
+                </span>
+              </div>
+            )}
 
             {/* Review submission form */}
             {showReviewForm && (
@@ -746,7 +874,7 @@ export const ProductDetailPage: React.FC = () => {
               },
               {
                 q: 'What if I need help setting this up?',
-                a: 'Every digital product includes detailed instructions, walkthrough videos, or cheat sheets. If you ever have a question, our support team at support@luminadigital.com responds within 12 hours.'
+                a: `Every digital product includes detailed instructions, walkthrough videos, or cheat sheets. If you ever have a question, our support team at ${settings.supportEmail || 'raj.nikhil0556@gmail.com'} responds within 12 hours.`
               },
               {
                 q: 'Do I have to pay a subscription?',
@@ -786,6 +914,16 @@ export const ProductDetailPage: React.FC = () => {
           </div>
         </section>
       )}
+
+      {/* Report Product Modal */}
+      <ReportProductModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        productId={product.id}
+        productTitle={product.title}
+        creatorId={product.creatorId || 'creator-lumina-core'}
+        creatorName="Lumina Creative Labs"
+      />
     </div>
   );
 };

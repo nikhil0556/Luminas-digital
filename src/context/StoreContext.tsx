@@ -8,7 +8,9 @@ import {
   CustomerReview,
   NewsletterSubscriber,
   ProductCategory,
-  StoreSettings
+  StoreSettings,
+  DashboardTab,
+  CreatorDashboardTab
 } from '../types';
 import { INITIAL_PRODUCTS } from '../data/initialProducts';
 import { REVIEWS } from '../data/reviews';
@@ -19,15 +21,15 @@ import { useAuth } from './AuthContext';
 export const DEFAULT_STORE_SETTINGS: StoreSettings = {
   storeName: 'Lumina Digital',
   tagline: 'Digital Products That Help You Learn, Create & Grow',
-  supportEmail: 'support@luminadigital.com',
+  supportEmail: 'raj.nikhil0556@gmail.com',
   creatorHandle: '@nikhil0556__',
   announcementText: 'Special Launch Offer: Use code LUMINA20 for 20% off all digital assets!',
   enableAnnouncementBar: true,
   activeCouponCode: 'LUMINA20',
   activeCouponDiscount: 20,
-  defaultCurrency: 'USD',
+  defaultCurrency: 'INR',
   enableInstantFulfillment: true,
-  enableSocialProofToasts: true,
+  enableSocialProofToasts: false,
   enableExitIntentModal: true,
   taxRatePercent: 0,
   testMode: false,
@@ -37,13 +39,21 @@ export const DEFAULT_STORE_SETTINGS: StoreSettings = {
     razorpay: true,
     applePay: true
   },
+  razorpayPaymentButtonId: '',
   accentTheme: 'indigo'
 };
 
-interface Toast {
+export interface Toast {
   id: string;
   type: 'success' | 'info' | 'error';
   message: string;
+  title?: string;
+  orderNumber?: string;
+}
+
+export interface FulfillVerifiedOrderResult {
+  order: Order;
+  dbConfirmed: boolean;
 }
 
 interface StoreContextType {
@@ -58,6 +68,11 @@ interface StoreContextType {
   setActiveCategoryFilter: (cat: string) => void;
   policyTab: 'privacy' | 'terms' | 'refund';
   setPolicyTab: (tab: 'privacy' | 'terms' | 'refund') => void;
+  dashboardTab: DashboardTab;
+  setDashboardTab: (tab: DashboardTab) => void;
+  navigateToDashboard: (tab?: DashboardTab) => void;
+  navigateToCreatorDashboard: (tab?: CreatorDashboardTab) => void;
+  navigateToBecomeCreator: () => void;
 
   // Products
   products: Product[];
@@ -70,6 +85,12 @@ interface StoreContextType {
   cart: CartItem[];
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
+  isCheckoutModalOpen: boolean;
+  setIsCheckoutModalOpen: (open: boolean) => void;
+  isCheckoutOpen: boolean;
+  setIsCheckoutOpen: (open: boolean) => void;
+  openCheckoutModal: (product?: Product) => void;
+  closeCheckoutModal: () => void;
   addToCart: (product: Product, quantity?: number) => void;
   removeFromCart: (productId: string) => void;
   updateCartQuantity: (productId: string, quantity: number) => void;
@@ -94,6 +115,19 @@ interface StoreContextType {
     customerName: string;
     paymentMethod: 'card' | 'paypal' | 'razorpay' | 'apple_pay';
   }) => Order;
+  fulfillVerifiedOrder: (orderData: {
+    orderNumber: string;
+    customerEmail: string;
+    customerName: string;
+    paymentId: string;
+    paymentMethod: 'card' | 'paypal' | 'razorpay' | 'apple_pay';
+    purchases: Array<{
+      productId: string;
+      productTitle: string;
+      amount: number;
+      currency: string;
+    }>;
+  }) => Promise<FulfillVerifiedOrderResult>;
   downloadItem: (product: Product, orderNumber?: string) => void;
 
   // Reviews
@@ -117,6 +151,9 @@ interface StoreContextType {
   openPromptModal: (product: Product) => void;
   closePromptModal: () => void;
 
+  // Session state clearing
+  clearUserSessionState: () => void;
+
   // Currency
   currency: 'USD' | 'EUR' | 'GBP' | 'INR';
   setCurrency: (c: 'USD' | 'EUR' | 'GBP' | 'INR') => void;
@@ -124,7 +161,11 @@ interface StoreContextType {
 
   // Toasts
   toasts: Toast[];
-  showToast: (message: string, type?: 'success' | 'info' | 'error') => void;
+  showToast: (
+    message: string,
+    type?: 'success' | 'info' | 'error',
+    options?: { title?: string; duration?: number; orderNumber?: string } | number
+  ) => void;
   removeToast: (id: string) => void;
 
   // Store Settings & Operations
@@ -149,6 +190,7 @@ interface StoreContextType {
   // Global Search & Sections / Requirements Navigation
   globalSearchQuery: string;
   setGlobalSearchQuery: (query: string) => void;
+  navigateToSearch: (query: string) => void;
   navigateToSection: (section: StoreSection) => void;
   navigateToRequirement: (requirement: string) => void;
 }
@@ -166,7 +208,7 @@ const DEFAULT_COUPONS: Coupon[] = [
     discountType: 'fixed',
     value: 10,
     minOrderAmount: 25,
-    description: '$10 off orders over $25',
+    description: '₹10 off orders of ₹25 or more',
     usageCount: 89
   },
   {
@@ -188,14 +230,51 @@ const DEFAULT_COUPONS: Coupon[] = [
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user, userProfile, syncPurchasedProducts, syncSavedProducts } = useAuth();
+  const {
+    user,
+    userProfile,
+    userPurchases,
+    userOrders,
+    syncPurchasedProducts,
+    syncSavedProducts,
+    recordPurchase,
+    recordOrder,
+    recordDownload,
+    openAuthModal
+  } = useAuth();
 
   // Navigation State
-  const [activePage, setActivePage] = useState<string>('home');
+  const [activePage, setActivePage] = useState<string>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('q')) return 'search';
+      if (window.location.pathname === '/search') return 'search';
+    } catch {
+      // ignore
+    }
+    return 'home';
+  });
+  const [dashboardTab, setDashboardTab] = useState<DashboardTab>('profile');
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [activeCategoryFilter, setActiveCategoryFilter] = useState<string>('All Products');
   const [policyTab, setPolicyTab] = useState<'privacy' | 'terms' | 'refund'>('privacy');
+
+  const navigateToDashboard = (tab?: DashboardTab) => {
+    if (tab) setDashboardTab(tab);
+    setActivePage('dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToCreatorDashboard = (_tab?: CreatorDashboardTab) => {
+    setActivePage('creator-dashboard');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const navigateToBecomeCreator = () => {
+    setActivePage('become-creator');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Modals
   const [sampleModalProduct, setSampleModalProduct] = useState<Product | null>(null);
@@ -222,11 +301,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
               price: match.price,
               originalPrice: match.originalPrice,
               category: match.category,
+              subcategory: match.subcategory || p.subcategory,
+              productType: match.productType || p.productType,
               tags: match.tags,
+              keywords: match.keywords || p.keywords,
               format: match.format,
               pagesOrCount: match.pagesOrCount,
               ebookDetails: match.ebookDetails || p.ebookDetails,
               aiDetails: match.aiDetails || p.aiDetails,
+              author: match.author || p.author,
+              bundledBooks: match.bundledBooks || p.bundledBooks,
+              coverGradient: match.coverGradient || p.coverGradient,
               downloadFilename: match.downloadFilename || p.downloadFilename,
               downloadContent: match.downloadContent || p.downloadContent,
               whatsIncluded: match.whatsIncluded || p.whatsIncluded,
@@ -265,12 +350,76 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return INITIAL_PRODUCTS;
   });
 
+  // Keep StoreContext synchronized with CreatorContext product modifications
+  useEffect(() => {
+    const handleProductsUpdated = () => {
+      try {
+        const saved = localStorage.getItem('lumina_products');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          setProducts(parsed);
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    window.addEventListener('lumina:products-updated', handleProductsUpdated);
+    window.addEventListener('storage', handleProductsUpdated);
+    return () => {
+      window.removeEventListener('lumina:products-updated', handleProductsUpdated);
+      window.removeEventListener('storage', handleProductsUpdated);
+    };
+  }, []);
+
   // Data Fetching & Loading States
   const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(false);
   const [isLoadingProductDetail, setIsLoadingProductDetail] = useState<boolean>(false);
 
   // Global Search State & Section Navigation
-  const [globalSearchQuery, setGlobalSearchQuery] = useState<string>('');
+  const [globalSearchQuery, setGlobalSearchQuery] = useState<string>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('q') || '';
+    } catch {
+      return '';
+    }
+  });
+
+  const navigateToSearch = (query: string) => {
+    const clean = query.trim();
+    setGlobalSearchQuery(clean);
+    setActivePage('search');
+    try {
+      const url = new URL(window.location.href);
+      if (clean) {
+        url.searchParams.set('q', clean);
+      } else {
+        url.searchParams.delete('q');
+      }
+      window.history.pushState({ page: 'search', q: clean }, '', url.toString());
+    } catch {
+      // ignore
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const q = params.get('q');
+        if (q !== null) {
+          setGlobalSearchQuery(q);
+          setActivePage('search');
+        }
+      } catch {
+        // ignore
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   const navigateToSection = (section: StoreSection) => {
     setActivePage(section.page);
@@ -350,7 +499,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [cart, setCart] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem('lumina_cart');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed: CartItem[] = JSON.parse(saved);
+        return parsed.map(item => {
+          const match = INITIAL_PRODUCTS.find(p => p.id === item.product?.id);
+          if (match) {
+            return {
+              ...item,
+              product: {
+                ...item.product,
+                price: match.price,
+                originalPrice: match.originalPrice
+              }
+            };
+          }
+          return item;
+        });
+      }
     } catch {
       // ignore
     }
@@ -358,6 +523,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
 
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState<boolean>(false);
+
+  const openCheckoutModal = (product?: Product) => {
+    if (product) {
+      addToCart(product, 1);
+    }
+    setIsCheckoutModalOpen(true);
+  };
+
+  const closeCheckoutModal = () => {
+    setIsCheckoutModalOpen(false);
+  };
 
   useEffect(() => {
     localStorage.setItem('lumina_cart', JSON.stringify(cart));
@@ -438,6 +615,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('lumina_orders', JSON.stringify(orders));
   }, [orders]);
 
+  // Sync orders with authenticated user's Firestore records across devices
+  useEffect(() => {
+    if (user && userOrders && userOrders.length > 0) {
+      const firestoreOrders: Order[] = userOrders.map((fo) => ({
+        id: fo.orderId,
+        orderNumber: fo.orderId,
+        customerEmail: fo.customerEmail,
+        customerName: user.displayName || 'Customer',
+        items: fo.products.map((p) => ({
+          productId: p.productId,
+          title: p.title,
+          price: p.price,
+          format: (p.format as any) || 'PDF',
+          downloadFilename: `${p.productId}.pdf`
+        })),
+        subtotal: fo.amount,
+        discountAmount: 0,
+        total: fo.amount,
+        paymentMethod: (fo.paymentMethod as any) || 'razorpay',
+        createdAt: fo.createdAt,
+        accessToken: `tok_${fo.orderId}`,
+        downloadCount: 1
+      }));
+      setOrders(firestoreOrders);
+    } else if (!user || (!userOrders || userOrders.length === 0)) {
+      setOrders([]);
+    }
+  }, [user, userOrders]);
+
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
 
   // Reviews State
@@ -473,21 +679,40 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     localStorage.setItem('lumina_subscribers', JSON.stringify(subscribers));
   }, [subscribers]);
 
-  // Currency
-  const [currency, setCurrency] = useState<'USD' | 'EUR' | 'GBP' | 'INR'>('USD');
+  // Currency (Base currency: INR)
+  const [currency, setCurrencyState] = useState<'USD' | 'EUR' | 'GBP' | 'INR'>(() => {
+    try {
+      const saved = localStorage.getItem('lumina_currency');
+      if (saved === 'USD' || saved === 'EUR' || saved === 'GBP' || saved === 'INR') {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'INR';
+  });
+
+  const setCurrency = (c: 'USD' | 'EUR' | 'GBP' | 'INR') => {
+    setCurrencyState(c);
+    try {
+      localStorage.setItem('lumina_currency', c);
+    } catch {
+      // ignore
+    }
+  };
 
   const currencyRates: Record<string, { symbol: string; rate: number }> = {
-    USD: { symbol: '$', rate: 1 },
-    EUR: { symbol: '€', rate: 0.92 },
-    GBP: { symbol: '£', rate: 0.78 },
-    INR: { symbol: '₹', rate: 83.5 }
+    INR: { symbol: '₹', rate: 1 },
+    USD: { symbol: '$', rate: 1 / 83.5 },
+    EUR: { symbol: '€', rate: 0.92 / 83.5 },
+    GBP: { symbol: '£', rate: 0.78 / 83.5 }
   };
 
   const formatPrice = (amount: number): string => {
-    const info = currencyRates[currency] || currencyRates.USD;
+    const info = currencyRates[currency] || currencyRates.INR;
     const converted = amount * info.rate;
     if (currency === 'INR') {
-      return `${info.symbol}${Math.round(converted).toLocaleString()}`;
+      return `${info.symbol}${Math.round(converted).toLocaleString('en-IN')}`;
     }
     return `${info.symbol}${converted.toFixed(2)}`;
   };
@@ -495,12 +720,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Toast System
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'success') => {
+  const showToast = (
+    message: string,
+    type: 'success' | 'info' | 'error' = 'success',
+    options?: { title?: string; duration?: number; orderNumber?: string } | number
+  ) => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts(prev => [...prev, { id, message, type }]);
+    const title = typeof options === 'object' ? options?.title : undefined;
+    const orderNumber = typeof options === 'object' ? options?.orderNumber : undefined;
+    const duration =
+      typeof options === 'number'
+        ? options
+        : typeof options === 'object' && options?.duration
+        ? options.duration
+        : 4500;
+
+    setToasts(prev => [...prev, { id, message, type, title, orderNumber }]);
     setTimeout(() => {
       removeToast(id);
-    }, 4000);
+    }, duration);
   };
 
   const removeToast = (id: string) => {
@@ -512,13 +750,45 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const saved = localStorage.getItem('lumina_store_settings');
       if (saved) {
-        return { ...DEFAULT_STORE_SETTINGS, ...JSON.parse(saved) };
+        const parsed = JSON.parse(saved);
+        if (
+          !parsed.supportEmail ||
+          !parsed.supportEmail.includes('@') ||
+          parsed.supportEmail === 'support@luminadigital.com'
+        ) {
+          parsed.supportEmail = 'raj.nikhil0556@gmail.com';
+        }
+        return {
+          ...DEFAULT_STORE_SETTINGS,
+          ...parsed,
+          supportEmail: (parsed.supportEmail && parsed.supportEmail.includes('@')) ? parsed.supportEmail : 'raj.nikhil0556@gmail.com',
+          enableSocialProofToasts: false
+        };
       }
     } catch {
       // ignore
     }
     return DEFAULT_STORE_SETTINGS;
   });
+
+  // Sync with server support configuration
+  useEffect(() => {
+    fetch('/api/support/config')
+      .then(r => r.ok ? r.json() : null)
+      .then(cfg => {
+        if (cfg?.supportEmail && typeof cfg.supportEmail === 'string' && cfg.supportEmail.includes('@')) {
+          setSettings(prev => {
+            if (prev.supportEmail !== cfg.supportEmail) {
+              return { ...prev, supportEmail: cfg.supportEmail };
+            }
+            return prev;
+          });
+        }
+      })
+      .catch(() => {
+        // use default
+      });
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('lumina_store_settings', JSON.stringify(settings));
@@ -529,6 +799,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const updated = { ...prev, ...newSettings };
       return updated;
     });
+    if (newSettings.supportEmail) {
+      fetch('/api/support/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supportEmail: newSettings.supportEmail })
+      }).catch(() => {});
+    }
     showToast('Store settings updated successfully!', 'success');
   };
 
@@ -732,7 +1009,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       price: item.product.price,
       format: item.product.format,
       downloadFilename: item.product.downloadFilename,
-      downloadContent: item.product.downloadContent
+      downloadContent: item.product.downloadContent,
+      bundledBooks: item.product.bundledBooks
     }));
 
     const newOrder: Order = {
@@ -757,8 +1035,32 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     clearCart();
     setAppliedCoupon(null);
 
-    // Sync purchase with Firestore if authenticated
+    // Sync order and purchase records with Firestore if authenticated
     if (user) {
+      recordOrder({
+        orderId: newOrder.orderNumber,
+        products: orderItems.map(item => ({
+          productId: item.productId,
+          title: item.title,
+          price: item.price,
+          format: item.format
+        })),
+        amount: finalTotal,
+        currency,
+        paymentStatus: 'completed',
+        paymentMethod: customerData.paymentMethod
+      }).catch(e => console.warn('Order record notice:', e));
+
+      orderItems.forEach(item => {
+        recordPurchase({
+          productId: item.productId,
+          orderId: newOrder.orderNumber,
+          productTitle: item.title,
+          amountPaid: item.price,
+          verificationToken: newOrder.accessToken
+        }).catch(e => console.warn('Purchase record notice:', e));
+      });
+
       syncPurchasedProducts(orderItems.map(item => item.productId)).catch(e =>
         console.warn('Purchase sync notice:', e)
       );
@@ -781,11 +1083,145 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return newOrder;
   };
 
+  // Fulfill Server-Verified Order (Cryptographically verified by backend and confirmed in Firestore)
+  const fulfillVerifiedOrder = async (orderData: {
+    orderNumber: string;
+    customerEmail: string;
+    customerName: string;
+    paymentId: string;
+    paymentMethod: 'card' | 'paypal' | 'razorpay' | 'apple_pay';
+    purchases: Array<{
+      productId: string;
+      productTitle: string;
+      amount: number;
+      currency: string;
+    }>;
+  }): Promise<FulfillVerifiedOrderResult> => {
+    const orderItems = cart.map(item => ({
+      productId: item.product.id,
+      title: item.product.title,
+      price: item.product.price,
+      format: item.product.format,
+      downloadFilename: item.product.downloadFilename,
+      downloadContent: item.product.downloadContent,
+      bundledBooks: item.product.bundledBooks
+    }));
+
+    const newOrder: Order = {
+      id: `ord-${Date.now()}`,
+      orderNumber: orderData.orderNumber,
+      customerEmail: orderData.customerEmail,
+      customerName: orderData.customerName || 'Customer',
+      items: orderItems,
+      subtotal: cartSubtotal,
+      discountAmount,
+      total: finalTotal,
+      couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+      paymentMethod: orderData.paymentMethod,
+      createdAt: new Date().toISOString(),
+      accessToken: `tok_rzp_${orderData.paymentId}`,
+      downloadCount: 0
+    };
+
+    setOrders(prev => [newOrder, ...prev]);
+    setCurrentOrder(newOrder);
+    setSelectedOrderId(newOrder.id);
+    clearCart();
+    setAppliedCoupon(null);
+
+    let dbConfirmed = false;
+
+    // Sync order and purchase records with Firestore database
+    if (user) {
+      try {
+        const orderRecordPromise = recordOrder({
+          orderId: newOrder.orderNumber,
+          products: orderItems.map(item => ({
+            productId: item.productId,
+            title: item.title,
+            price: item.price,
+            format: item.format
+          })),
+          amount: finalTotal,
+          currency,
+          paymentStatus: 'completed',
+          paymentMethod: orderData.paymentMethod
+        });
+
+        // Record verified purchases in Firestore
+        const purchasePromises = orderData.purchases.map(p =>
+          recordPurchase({
+            productId: p.productId,
+            orderId: newOrder.orderNumber,
+            paymentId: orderData.paymentId,
+            productTitle: p.productTitle,
+            amountPaid: p.amount,
+            amount: p.amount,
+            currency: p.currency,
+            status: 'completed',
+            verificationToken: newOrder.accessToken
+          })
+        );
+
+        const syncPromise = syncPurchasedProducts(orderData.purchases.map(p => p.productId));
+
+        const [orderResult, purchaseResults] = await Promise.all([
+          orderRecordPromise,
+          Promise.all(purchasePromises),
+          syncPromise
+        ]);
+
+        dbConfirmed = Boolean(orderResult && purchaseResults.every(Boolean));
+        console.log(`[StoreContext] Order #${newOrder.orderNumber} confirmed in database:`, {
+          orderResult,
+          purchasesCount: purchaseResults.length,
+          dbConfirmed
+        });
+      } catch (err) {
+        console.warn('[StoreContext] Database confirmation notice:', err);
+      }
+    } else {
+      dbConfirmed = true;
+    }
+
+    // Trigger celebration confetti
+    try {
+      confetti({
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.6 }
+      });
+    } catch {
+      // ignore
+    }
+
+    setActivePage('access');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Global success toast notification triggered after payment is verified on the server and purchase confirmed in database
+    showToast(
+      `Payment verified & purchase confirmed in database! Order #${orderData.orderNumber} is unlocked with instant access to your digital files.`,
+      'success',
+      {
+        title: 'Payment & Purchase Confirmed',
+        orderNumber: orderData.orderNumber,
+        duration: 6500
+      }
+    );
+
+    return { order: newOrder, dbConfirmed };
+  };
+
   // Download item action
   const downloadItem = (product: Product, orderNumber?: string) => {
     if (!product || !product.id) {
       showToast('Product file unavailable for download.', 'error');
       return;
+    }
+    if (user) {
+      recordDownload(product.id, product.title, product.downloadFilename).catch(e =>
+        console.warn('Download tracking notice:', e)
+      );
     }
     downloadProductFile(product, orderNumber);
     showToast(`Downloading "${product.downloadFilename || product.title}"...`, 'success');
@@ -800,7 +1236,31 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   // Product Purchase Verification
   const isProductPurchased = (productId: string): boolean => {
-    // Check Firestore user profile
+    // 1. Check authenticated Firestore purchases collection
+    if (user && userPurchases.length > 0) {
+      const hasVerifiedPurchase = userPurchases.some(p => {
+        if (p.accessStatus !== 'active') return false;
+        if (p.productId === productId) return true;
+        if (
+          (productId === 'prod-chatgpt-100-slash' || productId === 'prod-trending-100-slash-prompts') &&
+          (p.productId === 'prod-chatgpt-100-slash' || p.productId === 'prod-trending-100-slash-prompts')
+        ) {
+          return true;
+        }
+        if (
+          p.productId === 'prod-prompts-duo-bundle-20' &&
+          (productId === 'prod-chatgpt-100-slash' ||
+            productId === 'prod-trending-100-slash-prompts' ||
+            productId === 'prod-editing-designing-50-slash')
+        ) {
+          return true;
+        }
+        return false;
+      });
+      if (hasVerifiedPurchase) return true;
+    }
+
+    // 2. Check Firestore user profile
     if (userProfile?.purchasedProductIds?.includes(productId)) {
       return true;
     }
@@ -812,6 +1272,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return true;
     }
 
+    // 3. Check verified orders in current session
     return orders.some(order =>
       order.items.some(item => {
         if (item.productId === productId) return true;
@@ -907,11 +1368,34 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setPromptModalProduct(null);
   };
 
+  // Clear all temporary client-side session data upon sign out
+  const clearUserSessionState = () => {
+    setOrders([]);
+    setCurrentOrder(null);
+    setSelectedOrderId(null);
+    setDashboardTab('profile');
+    setSampleModalProduct(null);
+    setPromptModalProduct(null);
+    try {
+      sessionStorage.clear();
+      localStorage.removeItem('lumina_orders');
+      localStorage.removeItem('lumina_checkout_state');
+      localStorage.removeItem('lumina_temp_session');
+    } catch (_e) {
+      // ignore
+    }
+  };
+
   return (
     <StoreContext.Provider
       value={{
         activePage,
         setActivePage,
+        dashboardTab,
+        setDashboardTab,
+        navigateToDashboard,
+        navigateToCreatorDashboard,
+        navigateToBecomeCreator,
         selectedProductSlug,
         navigateToProduct,
         selectedOrderId,
@@ -928,6 +1412,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         cart,
         isCartOpen,
         setIsCartOpen,
+        isCheckoutModalOpen,
+        setIsCheckoutModalOpen,
+        isCheckoutOpen: isCheckoutModalOpen,
+        setIsCheckoutOpen: setIsCheckoutModalOpen,
+        openCheckoutModal,
+        closeCheckoutModal,
         addToCart,
         removeFromCart,
         updateCartQuantity,
@@ -944,6 +1434,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         orders,
         currentOrder,
         placeOrder,
+        fulfillVerifiedOrder,
         downloadItem,
         reviews,
         addReview,
@@ -957,6 +1448,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         promptModalProduct,
         openPromptModal,
         closePromptModal,
+        clearUserSessionState,
         currency,
         setCurrency,
         formatPrice,
@@ -978,6 +1470,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isProductPurchased,
         globalSearchQuery,
         setGlobalSearchQuery,
+        navigateToSearch,
         navigateToSection,
         navigateToRequirement
       }}

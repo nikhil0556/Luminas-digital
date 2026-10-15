@@ -48,6 +48,9 @@ export const EbookMockup: React.FC<EbookMockupProps> = ({
         {/* Subtle Spine Highlight & 3D Lighting effect */}
         <div className="absolute inset-y-0 left-0 w-3.5 bg-gradient-to-r from-black/50 via-white/15 to-transparent pointer-events-none z-20 border-r border-black/30" />
         
+        {/* Right side page-stack spatial depth */}
+        <div className="absolute inset-y-1 right-0 w-1.5 bg-gradient-to-l from-white/25 via-neutral-300/10 to-transparent pointer-events-none z-20" />
+
         {/* Diagonal Sheen Overlay */}
         <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/15 pointer-events-none z-10" />
 

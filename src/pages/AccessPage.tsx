@@ -16,11 +16,14 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
-import { downloadDigitalProduct } from '../utils/fileDownloader';
+import { useAuth } from '../context/AuthContext';
+import { downloadDigitalProduct, downloadRawFile } from '../utils/fileDownloader';
 import { copyTextToClipboard } from '../utils/clipboard';
 
 export const AccessPage: React.FC = () => {
-  const { currentOrder, orders, showToast, setActivePage } = useStore();
+  const { currentOrder, orders, products, openSampleModal, showToast, setActivePage, settings } = useStore();
+  const supportEmail = settings?.supportEmail || 'raj.nikhil0556@gmail.com';
+  const { user } = useAuth();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [copiedOrderId, setCopiedOrderId] = useState(false);
 
@@ -36,14 +39,21 @@ export const AccessPage: React.FC = () => {
     }
   }, [currentOrder, orders]);
 
-  const handleDownload = (product: any) => {
+  const handleDownload = async (product: any) => {
     setDownloadingId(product.id);
-    showToast(`Preparing download for "${product.title}"...`, 'info');
-    setTimeout(() => {
-      downloadDigitalProduct(product);
-      setDownloadingId(null);
+    showToast(`Preparing verified download for "${product.title}"...`, 'info');
+    try {
+      await downloadDigitalProduct(product, {
+        userId: user?.uid,
+        orderNumber: activeViewOrder?.orderNumber,
+        email: activeViewOrder?.customerEmail || user?.email || undefined
+      });
       showToast(`Downloaded "${product.title}" successfully!`, 'success');
-    }, 600);
+    } catch (err: any) {
+      showToast(err.message || 'Download failed. Please check your purchase verification.', 'error');
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   const copyOrderId = async (id: string) => {
@@ -117,51 +127,109 @@ export const AccessPage: React.FC = () => {
             </div>
 
             <div className="space-y-4">
-              {activeViewOrder.items.map(item => {
-                const prod = item.product;
-                const isDownloading = downloadingId === prod.id;
+              {activeViewOrder.items.map((item, idx) => {
+                const prod = item.product || products.find(p => p.id === item.productId) || item;
+                const prodId = prod.id || item.productId || `item-${idx}`;
+                const isDownloading = downloadingId === prodId;
+                const bundled = prod.bundledBooks || item.bundledBooks;
+
                 return (
                   <div
-                    key={prod.id}
-                    className="p-5 sm:p-6 rounded-2xl bg-neutral-900 border border-neutral-800 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:border-neutral-700"
+                    key={prodId}
+                    className="p-5 sm:p-6 rounded-2xl bg-neutral-900 border border-neutral-800 space-y-4 transition-all hover:border-neutral-700"
                   >
-                    <div className="space-y-1.5 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-indigo-500/20 text-indigo-300">
-                          {prod.format}
-                        </span>
-                        <span className="text-xs text-neutral-400 font-mono">
-                          {prod.fileSize || 'Digital Asset'}
-                        </span>
-                        <span className="text-xs text-neutral-500">•</span>
-                        <span className="text-xs text-neutral-400">
-                          {prod.pagesOrCount}
-                        </span>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-indigo-500/20 text-indigo-300">
+                            {prod.format || item.format}
+                          </span>
+                          <span className="text-xs text-neutral-400 font-mono">
+                            {prod.fileSize || 'Digital Asset'}
+                          </span>
+                          <span className="text-xs text-neutral-500">•</span>
+                          <span className="text-xs text-neutral-400">
+                            {prod.pagesOrCount || 'Instant Delivery'}
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-white">{prod.title || item.title}</h3>
+                        <p className="text-xs text-neutral-400 line-clamp-2">
+                          {prod.shortDescription || 'Full commercial license deliverable unlocked.'}
+                        </p>
                       </div>
-                      <h3 className="text-base font-bold text-white">{prod.title}</h3>
-                      <p className="text-xs text-neutral-400 line-clamp-1">{prod.shortDescription}</p>
+
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {prod.ebookDetails && (
+                          <button
+                            type="button"
+                            onClick={() => openSampleModal(prod)}
+                            className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-neutral-800 hover:bg-neutral-700 text-white flex items-center gap-1.5 border border-neutral-700 transition-colors"
+                          >
+                            <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                            <span>Read E-Book Online</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownload(prod)}
+                          disabled={isDownloading}
+                          className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all cursor-pointer"
+                        >
+                          {isDownloading ? (
+                            <>
+                              <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              <span>Downloading...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Download className="w-4 h-4" />
+                              <span>Download {bundled ? 'Full ZIP Bundle' : 'Now'}</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => handleDownload(prod)}
-                        disabled={isDownloading}
-                        className="w-full sm:w-auto px-5 py-3 rounded-xl text-xs sm:text-sm font-bold bg-emerald-600 hover:bg-emerald-500 disabled:bg-neutral-800 text-white flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition-all cursor-pointer"
-                      >
-                        {isDownloading ? (
-                          <>
-                            <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Downloading...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Download className="w-4 h-4" />
-                            <span>Download Now</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
+                    {/* If product contains bundled books (like The Ultimate AI Creator 2-in-1) */}
+                    {bundled && bundled.length > 0 && (
+                      <div className="pt-3 border-t border-neutral-800/80">
+                        <div className="text-xs font-bold text-neutral-300 mb-2 flex items-center gap-1.5">
+                          <BookOpen className="w-3.5 h-3.5 text-blue-400" />
+                          <span>Both Included PDF E-Books (Download individually or read):</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {bundled.map(book => (
+                            <div
+                              key={book.id}
+                              className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-800 flex items-center justify-between gap-3"
+                            >
+                              <div className="min-w-0">
+                                <div className="text-xs font-bold text-white truncate">
+                                  {book.title}
+                                </div>
+                                <div className="text-[10px] text-neutral-400">
+                                  {book.pages} • {book.role} • {book.format}
+                                </div>
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadRawFile(book.filename, book.downloadContent, 'application/pdf');
+                                  showToast(`Downloading ${book.title}...`, 'success');
+                                }}
+                                className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center gap-1 shrink-0 transition-colors"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>PDF</span>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -211,7 +279,7 @@ export const AccessPage: React.FC = () => {
             <div className="flex items-center gap-3">
               <Mail className="w-4 h-4 text-indigo-400 shrink-0" />
               <span>
-                Need help or lost your file? Email us anytime at <strong className="text-white">support@luminadigital.com</strong>
+                Need help or lost your file? Email us anytime at <a href={`mailto:${supportEmail}`} className="text-white hover:text-indigo-300 font-semibold font-mono underline">{supportEmail}</a>
               </span>
             </div>
             <button

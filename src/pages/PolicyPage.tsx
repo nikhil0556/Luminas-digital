@@ -3,7 +3,8 @@ import { ShieldCheck, Lock, RefreshCw, FileText, CheckCircle2 } from 'lucide-rea
 import { useStore } from '../context/StoreContext';
 
 export const PolicyPage: React.FC = () => {
-  const { policyTab, setPolicyTab } = useStore();
+  const { policyTab, setPolicyTab, settings } = useStore();
+  const supportEmail = settings?.supportEmail || 'raj.nikhil0556@gmail.com';
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-8">
@@ -82,7 +83,7 @@ export const PolicyPage: React.FC = () => {
           <section className="space-y-2">
             <h2 className="text-base font-bold text-white">2. How to Request a Refund</h2>
             <p>
-              Simply reply to your order confirmation email or email <strong className="text-white">support@luminadigital.com</strong> with your Order Number (e.g. ORD-XXXXX) and a brief sentence explaining why the product did not suit your needs.
+              Simply reply to your order confirmation email or email <a href={`mailto:${supportEmail}`} className="text-indigo-400 hover:underline font-mono font-semibold">{supportEmail}</a> with your Order Number (e.g. LUM-XXXXX) and a brief sentence explaining why the product did not suit your needs.
             </p>
           </section>
 

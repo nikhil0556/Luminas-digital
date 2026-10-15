@@ -23,6 +23,7 @@ import { ProductGridSkeleton } from '../components/ProductGridSkeleton';
 import { AI_PROMPT_SUBCATEGORIES } from '../data/initialProducts';
 import { SlashPromptsViewer } from '../components/SlashPromptsViewer';
 import { PdfBooksPromptsSection } from '../components/PdfBooksPromptsSection';
+import { BlowReveal } from '../components/BlowReveal';
 
 export const AiPromptsPage: React.FC = () => {
   const {
@@ -81,83 +82,89 @@ export const AiPromptsPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-16">
       {/* Hero Header */}
-      <div className="text-center max-w-3xl mx-auto space-y-4">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 shadow-sm">
-          <Terminal className="w-3.5 h-3.5 text-indigo-400" />
-          <span>Curated AI Engineering & Production Vaults</span>
-        </div>
-        <h1 className="text-3xl sm:text-5xl font-bold font-display text-white">
-          Engineered AI Prompts & Slash Packs
-        </h1>
-        <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
-          Stop prompting with vague questions and getting generic robotic fluff. Unlock calibrated prompt vaults and slash-style shortcuts tested on GPT-4o, Claude 3.5 Sonnet, and Gemini.
-        </p>
+      <BlowReveal direction="breeze" gustSweep>
+        <div className="text-center max-w-3xl mx-auto space-y-4 relative">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-64 bg-indigo-600/15 rounded-full blur-3xl pointer-events-none -z-10" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/25 shadow-[0_0_20px_-5px_rgba(99,102,241,0.3)]">
+            <Terminal className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Curated AI Engineering & Production Vaults</span>
+          </div>
+          <h1 className="text-3xl sm:text-5xl font-bold font-display text-white tracking-tight">
+            Engineered AI Prompts & Slash Packs
+          </h1>
+          <p className="text-sm sm:text-base text-neutral-400 leading-relaxed">
+            Stop prompting with vague questions and getting generic robotic fluff. Unlock calibrated prompt vaults and slash-style shortcuts tested on GPT-4o, Claude 3.5 Sonnet, and Gemini.
+          </p>
 
-        {/* Quick Nav Switcher */}
-        <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
-          <a
-            href="#pdf-books-prompts-section"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 transition-all shadow-lg shadow-emerald-900/20 cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Official PDF Books ($20 Each)</span>
-            <ArrowRight className="w-3 h-3" />
-          </a>
-          <a
-            href="#trending-slash-section"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/30 transition-all shadow-lg shadow-cyan-900/20 cursor-pointer"
-          >
-            <Flame className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Trending: 100 ChatGPT '/' Prompts</span>
-            <ArrowRight className="w-3 h-3" />
-          </a>
-          <a
-            href="#all-prompt-packs"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-neutral-900 text-neutral-300 border border-neutral-800 hover:text-white hover:bg-neutral-800 transition-all cursor-pointer"
-          >
-            <Compass className="w-3.5 h-3.5 text-neutral-400" />
-            <span>Browse All Packs ({promptProducts.length})</span>
-          </a>
+          {/* Quick Nav Switcher */}
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+            <a
+              href="#pdf-books-prompts-section"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-600/30 transition-all shadow-lg shadow-emerald-900/20 cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Official PDF Books ($20 Each)</span>
+              <ArrowRight className="w-3 h-3" />
+            </a>
+            <a
+              href="#trending-slash-section"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-cyan-600/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-600/30 transition-all shadow-lg shadow-cyan-900/20 cursor-pointer"
+            >
+              <Flame className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Trending: 100 ChatGPT '/' Prompts</span>
+              <ArrowRight className="w-3 h-3" />
+            </a>
+            <a
+              href="#all-prompt-packs"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.04] text-neutral-300 border border-white/[0.09] hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer"
+            >
+              <Compass className="w-3.5 h-3.5 text-neutral-400" />
+              <span>Browse All Packs ({promptProducts.length})</span>
+            </a>
+          </div>
         </div>
-      </div>
+      </BlowReveal>
 
       {/* DEDICATED OFFICIAL PDF BOOK SECTION ($20 EACH) */}
       <PdfBooksPromptsSection id="pdf-books-prompts-section" />
 
       {/* DEDICATED TRENDING AI PROMPT SECTION */}
-      <section id="trending-slash-section" className="space-y-6 pt-2 scroll-mt-24">
-        <div className="p-1 rounded-3xl bg-gradient-to-r from-cyan-500/20 via-indigo-500/20 to-emerald-500/20">
-          <div className="bg-neutral-950/90 rounded-[22px] p-6 sm:p-8 space-y-6 border border-cyan-500/30 backdrop-blur-xl">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/80 pb-5">
-              <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
-                  <Flame className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
-                  <span>TRENDING AI PROMPT SECTION</span>
+      <BlowReveal direction="left" gustSweep as="section">
+        <div id="trending-slash-section" className="space-y-6 pt-2 scroll-mt-24">
+          <div className="p-1 rounded-3xl bg-gradient-to-r from-cyan-500/20 via-indigo-500/20 to-emerald-500/20">
+            <div className="bg-neutral-950/90 rounded-[22px] p-6 sm:p-8 space-y-6 border border-cyan-500/30 backdrop-blur-xl">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-neutral-800/80 pb-5">
+                <div className="space-y-1.5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                    <Flame className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                    <span>TRENDING AI PROMPT SECTION</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-bold font-display text-white tracking-tight">
+                    100 Trending ChatGPT "/" Prompts
+                  </h2>
+                  <p className="text-xs sm:text-sm text-neutral-400 max-w-2xl leading-relaxed">
+                    A quick-reference cheatsheet of slash-style prompt commands, grouped across 8 high-velocity categories. Includes 1-click copy, live search, and full 4-page guide structure.
+                  </p>
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold font-display text-white tracking-tight">
-                  100 Trending ChatGPT "/" Prompts
-                </h2>
-                <p className="text-xs sm:text-sm text-neutral-400 max-w-2xl leading-relaxed">
-                  A quick-reference cheatsheet of slash-style prompt commands, grouped across 8 high-velocity categories. Includes 1-click copy, live search, and full 4-page guide structure.
-                </p>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-mono text-cyan-400">
+                    100 Commands Loaded
+                  </span>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-xs font-mono text-cyan-400">
-                  100 Commands Loaded
-                </span>
-              </div>
+              {/* Embedded Live Interactive Slash Prompts Viewer */}
+              <SlashPromptsViewer showHeroBanner={false} />
             </div>
-
-            {/* Embedded Live Interactive Slash Prompts Viewer */}
-            <SlashPromptsViewer showHeroBanner={false} />
           </div>
         </div>
-      </section>
+      </BlowReveal>
 
       {/* Interactive Quick-Test Prompt Playground Banner */}
-      <div className="rounded-2xl bg-neutral-900 border border-indigo-500/30 p-6 sm:p-8 space-y-4 shadow-xl">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-neutral-800 pb-3">
+      <BlowReveal direction="breeze" gustSweep>
+        <div className="rounded-2xl bg-gradient-to-b from-[#131b32]/90 via-[#0e1428]/95 to-[#080d1a] border border-white/[0.12] p-6 sm:p-8 space-y-4 shadow-2xl backdrop-blur-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/[0.08] pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-indigo-400" />
             <h3 className="text-sm sm:text-base font-bold text-white">
@@ -177,7 +184,7 @@ export const AiPromptsPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="p-4 rounded-xl bg-black/60 border border-neutral-800 relative">
+        <div className="p-4 rounded-xl bg-black/60 border border-white/[0.08] relative backdrop-blur-md">
           {isMegaPackPurchased ? (
             <>
               <p className="font-mono text-xs sm:text-sm text-neutral-200 leading-relaxed">
@@ -245,6 +252,7 @@ export const AiPromptsPage: React.FC = () => {
           )}
         </div>
       </div>
+    </BlowReveal>
 
       {/* Subcategory Pills */}
       <div id="all-prompt-packs" className="space-y-4 scroll-mt-24">
@@ -290,7 +298,7 @@ export const AiPromptsPage: React.FC = () => {
       )}
 
       {/* How to use AI Prompts Information box */}
-      <section className="p-8 sm:p-10 rounded-3xl bg-neutral-900/50 border border-neutral-800 space-y-6">
+      <BlowReveal direction="up" gustSweep as="section" className="p-8 sm:p-10 rounded-3xl bg-neutral-900/50 border border-neutral-800 space-y-6">
         <div className="max-w-xl">
           <span className="text-xs font-mono font-bold text-indigo-400 uppercase tracking-wider">
             Quick Tutorial
@@ -304,21 +312,21 @@ export const AiPromptsPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2 hover-breeze">
             <span className="text-indigo-400 font-mono text-xs font-bold">STEP 01</span>
             <h4 className="text-sm font-bold text-white">Choose & Copy Prompt</h4>
             <p className="text-xs text-neutral-400">
               Browse your downloaded Notion vault or plain text file and copy any calibrated prompt with 1 click.
             </p>
           </div>
-          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2 hover-breeze">
             <span className="text-emerald-400 font-mono text-xs font-bold">STEP 02</span>
             <h4 className="text-sm font-bold text-white">Fill in Your Parameters</h4>
             <p className="text-xs text-neutral-400">
               Replace bracketed fields like &#123;target_audience&#125; or &#123;product_goal&#125; with your exact business details.
             </p>
           </div>
-          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2">
+          <div className="p-5 rounded-xl bg-neutral-950 border border-neutral-800 space-y-2 hover-breeze">
             <span className="text-purple-400 font-mono text-xs font-bold">STEP 03</span>
             <h4 className="text-sm font-bold text-white">Paste & Get Elite Results</h4>
             <p className="text-xs text-neutral-400">
@@ -326,7 +334,7 @@ export const AiPromptsPage: React.FC = () => {
             </p>
           </div>
         </div>
-      </section>
+      </BlowReveal>
     </div>
   );
 };

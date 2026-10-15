@@ -1,0 +1,6 @@
+{
+  "summary": "Implementation plan for transitioning Lumina Digital to the 'Midnight Sapphire + Champagne Gold' color palette without editing individual components, utilizing Tailwind v4 @theme color scale overrides, updated CSS root custom properties, surface elevation tokens, WCAG AA compliance adjustments, and Razorpay theme synchronization.",
+  "updatedAt": "2026-10-15T04:24:32.686174458Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

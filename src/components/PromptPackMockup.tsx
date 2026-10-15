@@ -32,7 +32,7 @@ export const PromptPackMockup: React.FC<PromptPackMockupProps> = ({
       />
 
       <div
-        className={`relative ${sizeClasses} rounded-xl overflow-hidden shadow-2xl transition-all duration-300 group-hover/mockup:-translate-y-1.5 border border-white/15 flex flex-col justify-between`}
+        className={`relative ${sizeClasses} rounded-xl overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.22),0_18px_40px_-10px_rgba(0,0,0,0.85)] transition-all duration-300 group-hover/mockup:-translate-y-1.5 border border-white/20 flex flex-col justify-between`}
         style={{
           background: `linear-gradient(145deg, ${gradientFrom} 0%, ${gradientTo} 100%)`
         }}

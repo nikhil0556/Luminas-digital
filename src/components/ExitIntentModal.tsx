@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, Gift, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { useStore } from '../context/StoreContext';
 
@@ -51,9 +52,13 @@ export const ExitIntentModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in">
-      <div
-        className="relative w-full max-w-lg bg-neutral-900 border border-neutral-700/80 rounded-2xl shadow-2xl p-6 sm:p-8 text-neutral-200 overflow-hidden"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.94, y: 15 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.94, y: 15 }}
+        transition={{ type: 'spring', damping: 26, stiffness: 340 }}
+        className="relative w-full max-w-lg glass-strong rounded-3xl shadow-[0_30px_70px_-15px_rgba(0,0,0,0.9)] p-6 sm:p-8 text-neutral-200 overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow effect */}
@@ -62,7 +67,7 @@ export const ExitIntentModal: React.FC = () => {
         <button
           type="button"
           onClick={handleClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] flex items-center justify-center text-neutral-400 hover:text-white transition-colors cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
@@ -92,15 +97,16 @@ export const ExitIntentModal: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your best email address..."
-                className="w-full px-4 py-3 rounded-xl bg-neutral-950 border border-neutral-700 text-white placeholder-neutral-500 text-sm focus:outline-none focus:border-indigo-500"
+                className="w-full px-4 py-3 rounded-xl neu-inset text-white placeholder-neutral-500 text-sm focus:outline-none"
               />
-              <button
+              <motion.button
                 type="submit"
-                className="w-full py-3 rounded-xl text-sm font-bold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30 transition-all cursor-pointer"
+                whileTap={{ scale: 0.97 }}
+                className="w-full py-3 text-sm font-bold clay-btn-gold btn-shine-sweep text-neutral-950 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Unlock 15% Off & Free Kit</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </motion.button>
             </form>
 
             <p className="text-[11px] text-center text-neutral-400">
@@ -119,16 +125,17 @@ export const ExitIntentModal: React.FC = () => {
               We applied coupon <strong className="text-emerald-400 font-mono">CREATOR15</strong> to your cart and dispatched your Free Creator Prompt Kit to your email.
             </p>
             <div className="pt-2 flex gap-3">
-              <button
+              <motion.button
                 type="button"
+                whileTap={{ scale: 0.97 }}
                 onClick={() => {
                   handleClose();
                   setIsCartOpen(true);
                 }}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-md"
+                className="flex-1 py-2.5 rounded-xl text-xs font-bold clay-btn btn-shine-sweep text-white transition-all shadow-md"
               >
                 View Cart & Save
-              </button>
+              </motion.button>
               <button
                 type="button"
                 onClick={handleClose}
@@ -139,7 +146,7 @@ export const ExitIntentModal: React.FC = () => {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </div>
   );
 };

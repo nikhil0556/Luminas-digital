@@ -5,41 +5,212 @@
       "description": "User profile with identification, purchases, and preferences",
       "type": "object",
       "properties": {
-        "userId": { "type": "string", "maxLength": 128 },
-        "email": { "type": "string", "maxLength": 256 },
+        "uid": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 128 },
         "displayName": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
         "photoURL": { "type": "string", "maxLength": 1024 },
+        "role": { "type": "string", "enum": ["customer", "admin"] },
+        "authProvider": { "type": "string", "maxLength": 64 },
         "purchasedProductIds": { "type": "array" },
         "savedProductIds": { "type": "array" },
+        "preferences": { "type": "object" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 },
+        "lastLoginAt": { "type": "string", "maxLength": 64 },
+        "isDeleted": { "type": "boolean" },
+        "deletedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["uid", "email"]
+    },
+    "CatalogProduct": {
+      "title": "CatalogProduct",
+      "description": "Digital product catalog record for e-books, prompts, templates, checklists, and creator downloads",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 256 },
+        "subtitle": { "type": "string", "maxLength": 256 },
+        "slug": { "type": "string", "maxLength": 256 },
+        "shortDescription": { "type": "string", "maxLength": 1000 },
+        "description": { "type": "string", "maxLength": 8000 },
+        "category": { "type": "string", "maxLength": 64 },
+        "subcategory": { "type": "string", "maxLength": 128 },
+        "tags": { "type": "array" },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 16 },
+        "coverImage": { "type": "string", "maxLength": 2048 },
+        "thumbnail": { "type": "string", "maxLength": 2048 },
+        "coverGradient": { "type": "object" },
+        "productType": { "type": "string", "maxLength": 64 },
+        "format": { "type": "string", "maxLength": 64 },
+        "pagesOrCount": { "type": "string", "maxLength": 64 },
+        "creatorId": { "type": "string", "maxLength": 128 },
+        "creatorName": { "type": "string", "maxLength": 128 },
+        "creatorHandle": { "type": "string", "maxLength": 128 },
+        "creatorAvatar": { "type": "string", "maxLength": 1024 },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "pending_review", "published", "rejected", "unpublished", "suspended"]
+        },
+        "version": { "type": "string", "maxLength": 32 },
+        "versionChangelog": { "type": "string", "maxLength": 2000 },
+        "fileReference": { "type": "object" },
+        "previewSample": { "type": "object" },
+        "requirements": { "type": "array" },
+        "whatsIncluded": { "type": "array" },
+        "whoItsFor": { "type": "array" },
+        "keyBenefits": { "type": "array" },
+        "features": { "type": "array" },
+        "salesCount": { "type": "number" },
+        "totalRevenue": { "type": "number" },
+        "isArchived": { "type": "boolean" },
+        "archiveReason": { "type": "string", "maxLength": 512 },
+        "moderationNotes": { "type": "string", "maxLength": 2000 },
         "createdAt": { "type": "string", "maxLength": 64 },
         "updatedAt": { "type": "string", "maxLength": 64 }
       },
-      "required": ["userId", "email"]
+      "required": ["productId", "title", "price", "category", "creatorId", "status"]
     },
-    "CustomerEnquiry": {
-      "title": "CustomerEnquiry",
-      "description": "Customer support enquiry message thread item",
+    "OrderRecord": {
+      "title": "OrderRecord",
+      "description": "Customer purchase transaction record",
       "type": "object",
       "properties": {
-        "id": { "type": "string", "maxLength": 128 },
+        "orderId": { "type": "string", "maxLength": 128 },
         "userId": { "type": "string", "maxLength": 128 },
-        "userEmail": { "type": "string", "maxLength": 256 },
-        "message": { "type": "string", "maxLength": 4000 },
-        "sender": { "type": "string", "enum": ["user", "agent"] },
-        "timestamp": { "type": "string", "maxLength": 64 },
+        "customerEmail": { "type": "string", "maxLength": 256 },
+        "customerName": { "type": "string", "maxLength": 128 },
+        "products": { "type": "array" },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 16 },
+        "paymentStatus": { "type": "string", "enum": ["pending", "completed", "failed"] },
+        "accountStatus": { "type": "string", "maxLength": 64 },
+        "anonymizedAt": { "type": "string", "maxLength": 64 },
         "createdAt": { "type": "string", "maxLength": 64 }
       },
-      "required": ["id", "userId", "message", "sender"]
+      "required": ["orderId", "userId", "customerEmail", "amount", "paymentStatus"]
+    },
+    "PurchaseRecord": {
+      "title": "PurchaseRecord",
+      "description": "Verified customer access rights, payment reference, and license records",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "orderId": { "type": "string", "maxLength": 128 },
+        "paymentId": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 16 },
+        "status": { "type": "string", "enum": ["completed", "pending", "failed", "refunded"] },
+        "purchasedAt": { "type": "string", "maxLength": 64 },
+        "accessStatus": { "type": "string", "enum": ["active", "revoked"] },
+        "accountStatus": { "type": "string", "maxLength": 64 },
+        "revokedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId", "productId", "orderId", "accessStatus"]
+    },
+    "DownloadRecord": {
+      "title": "DownloadRecord",
+      "description": "Digital file download tracking and quota telemetry",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "productId": { "type": "string", "maxLength": 128 },
+        "downloadCount": { "type": "number" },
+        "lastDownloadedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["userId", "productId", "downloadCount"]
+    },
+    "ChatSession": {
+      "title": "ChatSession",
+      "description": "Customer support and AI concierge conversation history",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string", "maxLength": 128 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "messages": { "type": "array" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["sessionId", "userId", "messages"]
+    },
+    "CreatorProfile": {
+      "title": "CreatorProfile",
+      "description": "Multi-creator marketplace seller profile, KYC verification state, and financial stats",
+      "type": "object",
+      "properties": {
+        "creatorUid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 128 },
+        "businessName": { "type": "string", "maxLength": 128 },
+        "profileImage": { "type": "string", "maxLength": 1024 },
+        "bio": { "type": "string", "maxLength": 2000 },
+        "creatorType": { "type": "string", "enum": ["Individual Creator", "Studio / Agency", "Brand / Business", "Prompt Engineer / AI Specialist", "Independent Author"] },
+        "country": { "type": "string", "maxLength": 64 },
+        "email": { "type": "string", "maxLength": 256 },
+        "accountStatus": { "type": "string", "enum": ["pending", "under_review", "verified", "suspended", "rejected"] },
+        "verificationStatus": { "type": "object" },
+        "payoutSettings": { "type": "object" },
+        "totalSales": { "type": "number" },
+        "totalEarnings": { "type": "number" },
+        "balanceAvailable": { "type": "number" },
+        "balancePending": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["creatorUid", "displayName", "email", "accountStatus", "country", "creatorType"]
+    },
+    "CreatorPayout": {
+      "title": "CreatorPayout",
+      "description": "Creator revenue payout disbursements and settlements",
+      "type": "object",
+      "properties": {
+        "payoutId": { "type": "string", "maxLength": 128 },
+        "creatorUid": { "type": "string", "maxLength": 128 },
+        "amount": { "type": "number" },
+        "currency": { "type": "string", "maxLength": 16 },
+        "status": { "type": "string", "enum": ["pending", "processing", "paid", "failed"] },
+        "payoutMethod": { "type": "string", "maxLength": 64 },
+        "destination": { "type": "string", "maxLength": 256 },
+        "createdAt": { "type": "string", "maxLength": 64 },
+        "processedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["payoutId", "creatorUid", "amount", "status"]
     }
   },
   "firestore": {
     "/users/{userId}": {
       "schema": "UserProfile",
-      "description": "User account document"
+      "description": "User profile with authentication and access records"
     },
-    "/users/{userId}/enquiries/{enquiryId}": {
-      "schema": "CustomerEnquiry",
-      "description": "Customer support conversation message records"
+    "/products/{productId}": {
+      "schema": "CatalogProduct",
+      "description": "Store product listings"
+    },
+    "/orders/{orderId}": {
+      "schema": "OrderRecord",
+      "description": "Payment and order records"
+    },
+    "/purchases/{purchaseId}": {
+      "schema": "PurchaseRecord",
+      "description": "Verified product entitlements"
+    },
+    "/downloads/{downloadId}": {
+      "schema": "DownloadRecord",
+      "description": "Product file download tracking"
+    },
+    "/chat_sessions/{sessionId}": {
+      "schema": "ChatSession",
+      "description": "Customer chat history sessions"
+    },
+    "/creators/{creatorUid}": {
+      "schema": "CreatorProfile",
+      "description": "Verified marketplace creator and seller profiles"
+    },
+    "/creators/{creatorUid}/payouts/{payoutId}": {
+      "schema": "CreatorPayout",
+      "description": "Creator payout requests and remittance tracking"
     }
   }
 }
